@@ -1,5 +1,5 @@
 import os
-from smolagents import CodeAgent, OpenAIServerModel, ToolCollection
+from smolagents import CodeAgent, OpenAIServerModel, ToolCollection, LiteLLMModel
 from mcp import StdioServerParameters
 
 from config import Config
@@ -13,7 +13,7 @@ base_model_params = {
 }
 
 base_model = OpenAIServerModel(
-    model_id="google/gemma-3-27b-it",
+    model_id="deepseek/deepseek-r1-distill-llama-70b",
     api_base="https://openrouter.ai/api/v1",
     api_key=Config.OPENROUTER_API_KEY,
 )
@@ -72,7 +72,7 @@ def chat_loop():
                     user_input,
                     additional_args=dict(
                         project_path="/root/web-creator/website",
-                        bias="Always preserve original style of the website when adding new elements or changing something. Always are only allowed to use Node.js + TailwindCSS.",
+                        additional_information="Technical stack of a website - Node.js + TailwindCSS.",
                     ),
                 )
                 print("Weby:", response)
