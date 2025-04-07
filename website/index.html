@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hello World</title>
+    <style>
+.squishable { transition: transform 0.2s ease-in-out; }
+.squishable:active { transform: scale(0.95); }
+.squishable:hover {background-color: rgba(255, 255, 255, 0.3);}
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #333333, #555555); /* Darker gradient */
+            color: #f0f0f0; /* Light text color */
+            text-align: center;
+        }
+        .container {
+            padding: 2rem;
+            border-radius: 10px;
+            background-color: rgba(33, 33, 33, 0.2); /* Darker background */
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); /* Stronger shadow */
+            backdrop-filter: blur(10px);
+            animation: fadeIn 1s ease-in-out;
+        }
+        h1 {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            color: #ffffff; /* White heading */
+        }
+        p {
+            font-size: 1.5rem;
+            opacity: 0.9;
+            color: #cccccc; /* Grey text */
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Syntax highlighting */
+        pre {
+            background-color: #222222; /* Darker background for code blocks */
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+
+        .language-python { color: #ff8000; } /* Orange */
+        .language-javascript { color: #f0db4f; } /* Yellow */
+        .language-java { color: #9966cc; } /* Purple */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Hello World!</h1><div style="width: 100px; height: auto;"><img src="/static/logo.png" alt="Logo" style="width: 100px; height: auto;"></div>
+        <p>Welcome to my simple website</p>
+<div class="container">
+    <h2>What is Programming?</h2>
+    <p>Programming is the process of creating instructions for computers to follow. It involves using a specific language to write code that tells the computer what to do, allowing us to automate tasks, solve problems, and build amazing applications.</p>
+    <h2>Languages</h2>
+    <div class="language">
+        <h3><b>Python</b></h3>
+        <p>Python is a versatile, high-level language known for its readability and extensive libraries. It's great for beginners and experts alike.</p>
+        <pre><code class="language-python"># Placeholder for Python code</code></pre> <!-- Add syntax highlighting here -->
+    </div>
+    <div class="language">
+        <h3><b>JavaScript</b></h3>
+        <p>JavaScript is the language of the web, used to create interactive and dynamic websites.</p>
+        <pre><code class="language-javascript">// Placeholder for JavaScript code</code></pre> <!-- Add syntax highlighting here -->
+    </div>
+    <div class="language">
+        <h3><b>Java</b></h3>
+        <p>Java is a robust, object-oriented language widely used in enterprise applications and Android development.</p>
+        <pre><code class="language-java">// Placeholder for Java code</code></pre> <!-- Add syntax highlighting here -->
+    </div>
+</div>
+
+        
+<button class="squishable" style="padding: 10px 20px; border-radius: 5px; background-color: rgba(255, 255, 255, 0.3); color: white; border: none; cursor: pointer; transition: transform 0.1s ease-in-out;">Click Me</button>
+    </div>
+</body>
+</html>
