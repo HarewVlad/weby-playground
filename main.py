@@ -1,14 +1,9 @@
-from smolagents import CodeAgent, LiteLLMModel, AgentImage, OpenAIServerModel
-from dotenv import load_dotenv
 import os
+from smolagents import CodeAgent, OpenAIServerModel, ToolCollection
+from mcp import StdioServerParameters
 
-from filesystem_tools import filesystem_tools
-from descriptions import (
-    full_stack_software_engineer_agent_description,
-)
+from config import Config
 
-# Load environment variables
-load_dotenv()
 
 base_model_params = {
     "temperature": 1.0,
@@ -20,15 +15,16 @@ base_model_params = {
 base_model = OpenAIServerModel(
     model_id="google/gemma-3-27b-it",
     api_base="https://openrouter.ai/api/v1",
-    api_key=os.getenv("OPENROUTER_API_KEY"),
+    api_key=Config.OPENROUTER_API_KEY,
 )
 
-agent = CodeAgent(
-    model=base_model,
-    tools=filesystem_tools,
-    max_steps=15,
-    planning_interval=5,
-    additional_authorized_imports=["open", "os"],
+filesystem_server_parameters = StdioServerParameters(
+    command="npx",
+    args=[
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        os.path.join(os.getcwd(), "website"),
+    ],
 )
 
 
@@ -36,43 +32,56 @@ def chat_loop():
     print("Welcome to the Agent Chat! Type 'exit' or 'quit' to end the conversation.")
     print("=" * 50)
 
-    chat_history = []
+    with ToolCollection.from_mcp(
+        filesystem_server_parameters, trust_remote_code=True
+    ) as tool_collection:
+        agent = CodeAgent(
+            model=base_model,
+            tools=[*tool_collection.tools],
+            max_steps=15,
+            planning_interval=5,
+            additional_authorized_imports=["open", "os"],
+        )
 
-    while True:
-        user_input = input("\nYou: ")
+        chat_history = []
 
-        if user_input.lower() in ["exit", "quit"]:
-            print("\nExiting chat. Goodbye!")
-            break
+        while True:
+            user_input = input("\nYou: ")
 
-        chat_history.append({"role": "user", "content": user_input})
+            if user_input.lower() in ["exit", "quit"]:
+                print("\nExiting chat. Goodbye!")
+                break
 
-        try:
-            if len(chat_history) > 1:
-                formatted_input = f"User input: {user_input}\n\nChat history:\n"
-                max_history = min(16, len(chat_history) - 1)
-                for i in range(
-                    len(chat_history) - max_history - 1, len(chat_history) - 1
-                ):
-                    msg = chat_history[i]
-                    formatted_input += f"{msg['role'].capitalize()}: {msg['content']}\n"
-            else:
-                formatted_input = user_input
+            chat_history.append({"role": "user", "content": user_input})
 
-            response = agent.run(
-                user_input,
-                additional_args=dict(
-                    project_path="/root/web-creator/website",
-                    bias="Always preserve original style of the website when adding new elements or changing something.",
-                ),
-            )
-            print("\nOrchestrator:", response)
+            try:
+                if len(chat_history) > 1:
+                    formatted_input = f"User input: {user_input}\n\nChat history:\n"
+                    max_history = min(16, len(chat_history) - 1)
+                    for i in range(
+                        len(chat_history) - max_history - 1, len(chat_history) - 1
+                    ):
+                        msg = chat_history[i]
+                        formatted_input += (
+                            f"{msg['role'].capitalize()}: {msg['content']}\n"
+                        )
+                else:
+                    formatted_input = user_input
 
-            chat_history.append({"role": "assistant", "content": response})
-        except Exception as e:
-            print(f"\nError: {str(e)}")
+                response = agent.run(
+                    user_input,
+                    additional_args=dict(
+                        project_path="/root/web-creator/website",
+                        bias="Always preserve original style of the website when adding new elements or changing something. Always are only allowed to use nodejs + tailwind.",
+                    ),
+                )
+                print("\Weby:", response)
 
-        print("-" * 50)
+                chat_history.append({"role": "assistant", "content": response})
+            except Exception as e:
+                print(f"\nError: {str(e)}")
+
+            print("-" * 50)
 
 
 if __name__ == "__main__":
