@@ -72,10 +72,10 @@ def chat_loop():
                     user_input,
                     additional_args=dict(
                         project_path="/root/web-creator/website",
-                        bias="Always preserve original style of the website when adding new elements or changing something. Always are only allowed to use nodejs + tailwind.",
+                        bias="Always preserve original style of the website when adding new elements or changing something. Always are only allowed to use Node.js + TailwindCSS.",
                     ),
                 )
-                print("\Weby:", response)
+                print("Weby:", response)
 
                 chat_history.append({"role": "assistant", "content": response})
             except Exception as e:
