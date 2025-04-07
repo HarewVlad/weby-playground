@@ -3,27 +3,23 @@ from smolagents import CodeAgent, OpenAIServerModel, ToolCollection, LiteLLMMode
 from mcp import StdioServerParameters
 
 from config import Config
+from utils import get_project_structure
 
-
-base_model_params = {
-    "temperature": 1.0,
-    "top_k": 64,
-    "top_p": 0.95,
-    "max_tokens": 8192,
-}
 
 base_model = OpenAIServerModel(
-    model_id="deepseek/deepseek-r1-distill-llama-70b",
+    model_id="google/gemma-3-27b-it",
     api_base="https://openrouter.ai/api/v1",
     api_key=Config.OPENROUTER_API_KEY,
 )
+
+project_path = os.path.join(os.getcwd(), "website")
 
 filesystem_server_parameters = StdioServerParameters(
     command="npx",
     args=[
         "-y",
         "@modelcontextprotocol/server-filesystem",
-        os.path.join(os.getcwd(), "website"),
+        project_path,
     ],
 )
 
@@ -39,7 +35,7 @@ def chat_loop():
             model=base_model,
             tools=[*tool_collection.tools],
             max_steps=15,
-            planning_interval=5,
+            # planning_interval=5,
             additional_authorized_imports=["open", "os"],
         )
 
@@ -72,7 +68,10 @@ def chat_loop():
                     user_input,
                     additional_args=dict(
                         project_path="/root/web-creator/website",
-                        additional_information="Technical stack of a website - Node.js + TailwindCSS.",
+                        project_info="This web project uses Node.js + TailwindCSS.",
+                        project_structure=get_project_structure(
+                            project_path, ["node_modules", "style.css"]
+                        ),
                     ),
                 )
                 print("Weby:", response)
