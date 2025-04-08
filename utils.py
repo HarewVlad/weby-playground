@@ -106,6 +106,10 @@ def get_project_structure_detailed(
             if os.path.isdir(item_path) and item in exclude:
                 continue
 
+            # Skip excluded files
+            if os.path.isfile(item_path) and item in exclude:
+                continue
+
             # Create the properly formatted path starting with "project_path/"
             rel_path = os.path.relpath(item_path, project_path)
             formatted_path = os.path.join(project_path, rel_path)
