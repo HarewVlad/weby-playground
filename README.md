@@ -14,8 +14,8 @@ python main.py
 
 ### Install
 ```
+npx shadcn@latest init (Call it "website")
 cd website
-npm install
 ```
 
 ### Run

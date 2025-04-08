@@ -115,10 +115,9 @@ def chat_loop():
                             "dist",
                             "build",
                             "style.css",
-                            "*.css.map",
-                            "*.js.map",
                             "package.json",
                             "package-lock.json",
+                            ".next",
                         ],
                     )
                     project_context = f"Current project structure: {json.dumps(project_structure, indent=2)}\n\n"
@@ -143,8 +142,8 @@ def chat_loop():
 
             # Call API
             stream = client.chat.completions.create(
-                # model="google/gemma-3-27b-it",
-                model="deepseek/deepseek-r1-distill-llama-70b",
+                model="google/gemma-3-27b-it",
+                # model="deepseek/deepseek-r1-distill-llama-70b",
                 messages=messages,
                 stream=True,
                 # stop=["</edit>"]  # Can help in single file fast editing???
