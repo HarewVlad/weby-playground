@@ -117,6 +117,8 @@ def chat_loop():
                             "style.css",
                             "*.css.map",
                             "*.js.map",
+                            "package.json",
+                            "package-lock.json",
                         ],
                     )
                     project_context = f"Current project structure: {json.dumps(project_structure, indent=2)}\n\n"
