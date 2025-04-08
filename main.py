@@ -17,29 +17,33 @@ os.makedirs(project_path, exist_ok=True)
 print(f"[*] Project path set to: {project_path}")
 
 
-def apply_edits(response_content, base_project_path):
+def apply_changes(response_content, base_project_path):
     """
-    Parses the response content for <edit filename="...">...</edit> blocks,
-    handling optional markdown code fences (```) around the content,
-    and applies the changes to the specified files within the base_project_path.
+    Parses the response content for <edit filename="...">...</edit> and
+    <create filename="...">...</create> blocks, handling optional markdown
+    code fences (```) around the content, and applies the changes to the
+    specified files within the base_project_path.
     """
-    # Regex to find <edit> blocks and capture filename and content
-    # It now optionally matches and excludes markdown code fences (```[lang]\n ... \n```)
-    # around the core content
-    edit_pattern = re.compile(
-        r'<edit filename="([^"]+)">\s*'
+    action_pattern = re.compile(
+        # Match <edit filename="..."> or <create filename="...">
+        r'<(edit|create) filename="([^"]+)">\s*'
+        # Optional ```lang marker and newline
         r"(?:```[a-zA-Z]*\s*\n?)?"
+        # Capture the content (non-greedy)
         r"(.*?)"
+        # Optional newline and closing ``` marker
         r"(?:\n?\s*```)?"
-        r"\s*</edit>",
+        # Match the corresponding closing tag </edit> or </create>
+        r"\s*</\1>",
         re.DOTALL | re.IGNORECASE,
     )
-    edits_applied = False
+    changes_applied = False
     abs_project_path = os.path.abspath(base_project_path)
 
-    for match in edit_pattern.finditer(response_content):
-        relative_filename = match.group(1).strip()
-        file_content = match.group(2).strip()
+    for match in action_pattern.finditer(response_content):
+        action_type = match.group(1).lower()
+        relative_filename = match.group(2).strip()
+        file_content = match.group(3).strip()
 
         # Prevent path traversal issues
         target_path = os.path.join(abs_project_path, relative_filename)
@@ -58,8 +62,10 @@ def apply_edits(response_content, base_project_path):
 
             with open(abs_target_path, "w", encoding="utf-8") as f:
                 f.write(file_content)
-            print(f"\n[*] Applied edit to: {relative_filename}")
-            edits_applied = True
+
+            log_action = "Applied edit to" if action_type == "edit" else "Created file"
+            print(f"\n[*] {log_action}: {relative_filename}")
+            changes_applied = True
         except OSError as e:
             print(f"\n[!] Error writing file '{relative_filename}': {e}")
         except Exception as e:
@@ -67,7 +73,7 @@ def apply_edits(response_content, base_project_path):
                 f"\n[!] An unexpected error occurred while processing file '{relative_filename}': {e}"
             )
 
-    return edits_applied
+    return changes_applied
 
 
 def chat_loop():
@@ -109,6 +115,8 @@ def chat_loop():
                             "dist",
                             "build",
                             "style.css",
+                            "*.css.map",
+                            "*.js.map",
                         ],
                     )
                     project_context = f"Current project structure: {json.dumps(project_structure, indent=2)}\n\n"
@@ -133,7 +141,8 @@ def chat_loop():
 
             # Call API
             stream = client.chat.completions.create(
-                model="google/gemma-3-27b-it",
+                # model="google/gemma-3-27b-it",
+                model="deepseek/deepseek-r1-distill-llama-70b",
                 messages=messages,
                 stream=True,
                 # stop=["</edit>"]  # Can help in single file fast editing???
@@ -151,7 +160,9 @@ def chat_loop():
 
             # Post-processing
             if full_response:
-                apply_edits(full_response, project_path)
+                changes_applied = apply_changes(full_response, project_path)
+                if changes_applied:
+                    print("[*] File changes applied successfully.")
 
                 chat_history.append({"role": "assistant", "content": full_response})
 
