@@ -108,7 +108,7 @@ def get_project_structure_detailed(
 
             # Create the properly formatted path starting with "project_path/"
             rel_path = os.path.relpath(item_path, project_path)
-            formatted_path = os.path.join("project_path", rel_path)
+            formatted_path = os.path.join(project_path, rel_path)
 
             if os.path.isfile(item_path):
                 try:
