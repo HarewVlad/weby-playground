@@ -26,14 +26,14 @@ def apply_changes(response_content, base_project_path):
     """
     action_pattern = re.compile(
         # Match <edit filename="..."> or <create filename="...">
-        r'<(edit|create) filename="([^"]+)">\s*'
+        r'<(Edit) filename="([^"]+)">\s*'
         # Optional ```lang marker and newline
         r"(?:```[a-zA-Z]*\s*\n?)?"
         # Capture the content (non-greedy)
         r"(.*?)"
         # Optional newline and closing ``` marker
         r"(?:\n?\s*```)?"
-        # Match the corresponding closing tag </edit> or </create>
+        # Match the corresponding closing tag </Edit>
         r"\s*</\1>",
         re.DOTALL | re.IGNORECASE,
     )
@@ -41,7 +41,6 @@ def apply_changes(response_content, base_project_path):
     abs_project_path = os.path.abspath(base_project_path)
 
     for match in action_pattern.finditer(response_content):
-        action_type = match.group(1).lower()
         relative_filename = match.group(2).strip()
         file_content = match.group(3).strip()
 
@@ -63,8 +62,7 @@ def apply_changes(response_content, base_project_path):
             with open(abs_target_path, "w", encoding="utf-8") as f:
                 f.write(file_content)
 
-            log_action = "Applied edit to" if action_type == "edit" else "Created file"
-            print(f"\n[*] {log_action}: {relative_filename}")
+            print(f"\n[*] Applied edit to: {relative_filename}")
             changes_applied = True
         except OSError as e:
             print(f"\n[!] Error writing file '{relative_filename}': {e}")
@@ -106,6 +104,7 @@ def chat_loop():
                         "Project structure: Not available (directory not found).\n\n"
                     )
                 else:
+                    # TODO: I guess it's better to use "include" instead of "exclude" now ...
                     project_structure = get_project_structure_detailed(
                         project_path,
                         [
@@ -115,9 +114,15 @@ def chat_loop():
                             "dist",
                             "build",
                             "style.css",
-                            "package.json",
+                            # "package.json",
                             "package-lock.json",
                             ".next",
+                            "lib",
+                            "public",
+                            "tsconfig.json",
+                            "next-env.d.ts",
+                            "button.tsx",  # shadcn
+                            "card.tsx",  # shadcn
                         ],
                     )
                     project_context = f"Current project structure: {json.dumps(project_structure, indent=2)}\n\n"
@@ -142,8 +147,8 @@ def chat_loop():
 
             # Call API
             stream = client.chat.completions.create(
-                model="google/gemma-3-27b-it",
-                # model="deepseek/deepseek-r1-distill-llama-70b",
+                # model="google/gemma-3-27b-it",
+                model="deepseek/deepseek-r1-distill-llama-70b",
                 messages=messages,
                 stream=True,
                 # stop=["</edit>"]  # Can help in single file fast editing???
