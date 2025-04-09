@@ -147,10 +147,11 @@ def chat_loop():
 
             # Call API
             stream = client.chat.completions.create(
-                # model="google/gemma-3-27b-it",
                 model="deepseek/deepseek-r1-distill-llama-70b",
                 messages=messages,
                 stream=True,
+                temperature=0.6,
+                top_p=0.95,
                 # stop=["</edit>"]  # Can help in single file fast editing???
             )
 
