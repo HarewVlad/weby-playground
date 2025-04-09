@@ -121,8 +121,7 @@ def chat_loop():
                             "public",
                             "tsconfig.json",
                             "next-env.d.ts",
-                            "button.tsx",  # shadcn
-                            "card.tsx",  # shadcn
+                            "ui",  # shadcn
                         ],
                     )
                     project_context = f"Current project structure: {json.dumps(project_structure, indent=2)}\n\n"
@@ -147,7 +146,8 @@ def chat_loop():
 
             # Call API
             stream = client.chat.completions.create(
-                model="deepseek/deepseek-r1-distill-llama-70b",
+                # model="openai/gpt-4o-2024-11-20",
+                model="deepseek/deepseek-r1-distill-llama-70b:nitro",
                 messages=messages,
                 stream=True,
                 temperature=0.6,
@@ -160,9 +160,12 @@ def chat_loop():
             full_response = ""
             for chunk in stream:
                 content_delta = chunk.choices[0].delta.content
+                # reasoning_delta = chunk.choices[0].delta.reasoning
                 if content_delta is not None:
                     print(content_delta, end="", flush=True)
                     full_response += content_delta
+                # elif reasoning_delta is not None:
+                #     print(reasoning_delta, end="", flush=True)
             print()
 
             # Post-processing
