@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any, AsyncGenerator
 from openai import AsyncOpenAI
 import json
 import uvicorn
@@ -27,6 +27,15 @@ class ChatCompletionRequest(BaseModel):
     top_p: Optional[float] = Field(
         default=0.95, ge=0.0, le=1.0, description="Controls the nucleus sampling"
     )
+
+
+class ChatCompletionChunk(BaseModel):
+    id: Optional[str] = None
+    object: Optional[str] = None
+    created: Optional[int] = None
+    model: Optional[str] = None
+    choices: Optional[List[Dict[str, Any]]] = None
+    error: Optional[str] = None
 
 
 app = FastAPI(
@@ -70,10 +79,11 @@ def serialize_object(obj):
     summary="Create a streaming chat completion",
     description="Create a streaming chat completion with the provided messages",
     response_description="Streaming response with chunks of the completion",
+    response_model=AsyncGenerator[ChatCompletionChunk, None],
 )
 async def weby(
     request: ChatCompletionRequest, client: AsyncOpenAI = Depends(get_client)
-):
+) -> StreamingResponse:
     try:
         if any(msg.role == "system" for msg in request.messages):
             raise HTTPException(
