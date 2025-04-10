@@ -96,7 +96,7 @@ def serialize_object(obj):
                         "properties": {
                             "detail": {
                                 "type": "string",
-                                "example": "It's not allowed to override default Weby system prompt",
+                                "example": "Overriding the default system prompt is not allowed",
                             }
                         },
                     }
@@ -128,7 +128,7 @@ async def weby(
         if any(msg.role == "system" for msg in request.messages):
             raise HTTPException(
                 status_code=400,
-                detail="It's not allowed to override default Weby system prompt",
+                detail="Overriding the default system prompt is not allowed",
             )
 
         messages = [{"role": "system", "content": Config.SYSTEM_PROMPT}]
