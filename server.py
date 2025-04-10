@@ -79,7 +79,47 @@ def serialize_object(obj):
     summary="Create a streaming chat completion",
     description="Create a streaming chat completion with the provided messages",
     response_description="Streaming response with chunks of the completion",
-    response_model=AsyncGenerator[ChatCompletionChunk, None],
+    response_model=None,
+    responses={
+        200: {
+            "description": "Stream of chat completion chunks",
+            "content": {
+                "text/event-stream": {"schema": {"type": "string", "format": "binary"}}
+            },
+        },
+        400: {
+            "description": "Bad Request - System prompt override not allowed",
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "detail": {
+                                "type": "string",
+                                "example": "It's not allowed to override default Weby system prompt",
+                            }
+                        },
+                    }
+                }
+            },
+        },
+        500: {
+            "description": "Internal Server Error",
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "error": {
+                                "type": "string",
+                                "example": "An unexpected error occurred",
+                            }
+                        },
+                    }
+                }
+            },
+        },
+    },
 )
 async def weby(
     request: ChatCompletionRequest, client: AsyncOpenAI = Depends(get_client)
