@@ -17,9 +17,17 @@ class Message(BaseModel):
     content: str = Field(..., description="The content of the message")
 
 
+class FileItem(BaseModel):
+    file_path: str = Field(..., description="Path to the file")
+    content: str = Field(..., description="Content of the file")
+
+
 class ChatCompletionRequest(BaseModel):
     messages: List[Message] = Field(
         ..., description="A list of messages comprising the conversation so far"
+    )
+    files: Optional[List[FileItem]] = Field(
+        default=[], description="A list of files with their paths and contents"
     )
     temperature: Optional[float] = Field(
         default=0.6, ge=0.0, le=1.0, description="Controls randomness in the response"
@@ -134,6 +142,16 @@ async def weby(
         messages = [{"role": "system", "content": Config.SYSTEM_PROMPT}]
 
         messages.extend([serialize_object(msg) for msg in request.messages])
+
+        if request.files:
+            project_structure = [
+                {"file_path": file.file_path, "content": file.content}
+                for file in request.files
+            ]
+            project_context = f"Current project structure: {json.dumps(project_structure, indent=2)}\n\n"
+
+            if messages[-1]["role"] == "user":
+                messages[-1]["content"] = project_context + messages[-1]["content"]
 
         async def generate():
             try:
