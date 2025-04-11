@@ -139,7 +139,7 @@ async def weby(
                 detail="Overriding the default system prompt is not allowed",
             )
 
-        messages = [{"role": "system", "content": Config.SYSTEM_PROMPT}]
+        messages = [{"role": "system", "content": Config.SYSTEM_PROMPT + "\n\n" + Config.SHADCN_DOCUMENTATION}]
 
         messages.extend([serialize_object(msg) for msg in request.messages])
 
