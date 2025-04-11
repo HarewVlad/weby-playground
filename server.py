@@ -88,6 +88,7 @@ def serialize_object(obj):
     description="Create a streaming chat completion with the provided messages",
     response_description="Streaming response with chunks of the completion",
     response_model=None,
+    response_class=StreamingResponse,
     responses={
         200: {
             "description": "Stream of chat completion chunks",
