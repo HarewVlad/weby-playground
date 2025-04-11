@@ -1,14 +1,9 @@
 import os
 import re
-from openai import OpenAI
 import json
 from config import Config
 from utils import get_project_structure_detailed
-
-client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=Config.OPENROUTER_API_KEY,
-)
+import requests
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 project_path = os.path.join(script_dir, "website")
@@ -94,79 +89,71 @@ def chat_loop():
         chat_history.append({"role": "user", "content": user_input})
 
         try:
-            # Prepare context
-            try:
-                if not os.path.exists(project_path):
-                    print(
-                        f"\nWarning: Project path '{project_path}' does not exist. Cannot get structure."
-                    )
-                    project_context = (
-                        "Project structure: Not available (directory not found).\n\n"
-                    )
-                else:
-                    # TODO: I guess it's better to use "include" instead of "exclude" now ...
-                    project_structure = get_project_structure_detailed(
-                        project_path,
-                        [
-                            "node_modules",
-                            ".git",
-                            "__pycache__",
-                            "dist",
-                            "build",
-                            "style.css",
-                            # "package.json",
-                            "package-lock.json",
-                            ".next",
-                            "lib",
-                            "public",
-                            "tsconfig.json",
-                            "next-env.d.ts",
-                            "ui",  # shadcn
-                        ],
-                    )
-                    project_context = f"Current project structure: {json.dumps(project_structure, indent=2)}\n\n"
-            except Exception as e:
-                print(
-                    f"\nWarning: Error getting project structure: {e}. Proceeding without it."
-                )
-                project_context = f"Project structure: Error retrieving ({e}).\n\n"
-
-            current_user_prompt = project_context + f"User request: {user_input}"
-
-            # Prepare messages
-            messages = [
-                {
-                    "role": "system",
-                    "content": Config.SYSTEM_PROMPT,
-                }
-            ]
-
-            messages.extend(chat_history[:-1])
-            messages.append({"role": "user", "content": current_user_prompt})
-
-            # Call API
-            stream = client.chat.completions.create(
-                # model="openai/gpt-4o-2024-11-20",
-                model="deepseek/deepseek-r1-distill-llama-70b:nitro",
-                messages=messages,
-                stream=True,
-                temperature=0.6,
-                top_p=0.95,
-                # stop=["</edit>"]  # Can help in single file fast editing???
+            files = get_project_structure_detailed(
+                project_path,
+                [
+                    "node_modules",
+                    ".git",
+                    "__pycache__",
+                    "dist",
+                    "build",
+                    "style.css",
+                    # "package.json",
+                    "package-lock.json",
+                    ".next",
+                    "lib",
+                    "public",
+                    "tsconfig.json",
+                    "next-env.d.ts",
+                    "ui",  # shadcn
+                ],
             )
 
-            # Process response
-            print("Weby: ", end="", flush=True)
-            full_response = ""
-            for chunk in stream:
-                content_delta = chunk.choices[0].delta.content
-                # reasoning_delta = chunk.choices[0].delta.reasoning
-                if content_delta is not None:
-                    print(content_delta, end="", flush=True)
-                    full_response += content_delta
-                # elif reasoning_delta is not None:
-                #     print(reasoning_delta, end="", flush=True)
-            print()
+            payload = {
+                "messages": chat_history,
+                "files": files,
+            }
+
+            with requests.post(
+                Config.WEBY_API + "/v1/weby", json=payload, stream=True
+            ) as response:
+                response.raise_for_status()
+
+                print("Weby: ", end="", flush=True)
+                full_response = ""
+
+                for line in response.iter_lines():
+                    if line:
+                        # Strip the "data: " prefix from SSE format
+                        line_text = line.decode("utf-8")
+                        if not line_text.startswith("data: "):
+                            continue
+
+                        data = line_text[6:]  # Skip "data: "
+
+                        if data == "[DONE]":
+                            break
+
+                        try:
+                            chunk = json.loads(data)
+                            if "error" in chunk:
+                                print(f"\n[!] Error from server: {chunk['error']}")
+                                break
+
+                            if "choices" in chunk and chunk["choices"]:
+                                content_delta = (
+                                    chunk["choices"][0]
+                                    .get("delta", {})
+                                    .get("content", "")
+                                )
+                                if content_delta:
+                                    print(content_delta, end="", flush=True)
+                                    full_response += content_delta
+                        except json.JSONDecodeError:
+                            print(f"\n[!] Error decoding JSON from server: {data}")
+                            continue
+
+                print()
 
             # Post-processing
             if full_response:
@@ -180,6 +167,8 @@ def chat_loop():
             if len(chat_history) > Config.MAX_CHAT_HISTORY_SIZE:
                 chat_history = chat_history[-Config.MAX_CHAT_HISTORY_SIZE :]
 
+        except requests.exceptions.RequestException as e:
+            print(f"\n[!] Error connecting to server: {str(e)}")
         except Exception as e:
             print(f"\n[!] Error processing request: {str(e)}")
 

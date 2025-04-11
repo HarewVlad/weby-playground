@@ -8,7 +8,7 @@ class Config:
     OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
     GROQ_API_KEY = os.getenv("GROQ_API_KEY")
     WEBY_API = os.getenv("WEBY_URL")
-    MAX_CHAT_HISTORY_SIZE = 16
+    MAX_CHAT_HISTORY_SIZE = 4
     SYSTEM_PROMPT = """# SYSTEM PROMPT: Weby - AI Web Development Assistant
 
 ## 1. Persona & Core Objective

@@ -121,7 +121,7 @@ def get_project_structure_detailed(
                     if file_size > max_file_size:
                         result.append(
                             {
-                                "filename": formatted_path,
+                                "file_path": formatted_path,
                                 "content": f"[File too large: {file_size} bytes]",
                             }
                         )
@@ -132,17 +132,17 @@ def get_project_structure_detailed(
                         content = f.read()
 
                     # Add file information to result
-                    result.append({"filename": formatted_path, "content": content})
+                    result.append({"file_path": formatted_path, "content": content})
                 except UnicodeDecodeError:
                     # For binary files, just note that
                     result.append(
-                        {"filename": formatted_path, "content": "[Binary file]"}
+                        {"file_path": formatted_path, "content": "[Binary file]"}
                     )
                 except (PermissionError, IsADirectoryError) as e:
                     # For files we can't read, just note that
                     result.append(
                         {
-                            "filename": formatted_path,
+                            "file_path": formatted_path,
                             "content": f"[Unable to read content: {str(e)}]",
                         }
                     )
