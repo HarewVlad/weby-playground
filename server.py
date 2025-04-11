@@ -151,7 +151,7 @@ async def weby(
             project_context = f"Current project structure: {json.dumps(project_structure, indent=2)}\n\n"
 
             if messages[-1]["role"] == "user":
-                messages[-1]["content"] = project_context + messages[-1]["content"]
+                messages[-1]["content"] = project_context + "User request:" + messages[-1]["content"]
 
         async def generate():
             try:
