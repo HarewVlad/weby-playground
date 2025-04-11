@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any, AsyncGenerator
+from typing import List, Optional, Dict
 from openai import AsyncOpenAI
 import json
 import uvicorn
@@ -35,15 +35,6 @@ class ChatCompletionRequest(BaseModel):
     top_p: Optional[float] = Field(
         default=0.95, ge=0.0, le=1.0, description="Controls the nucleus sampling"
     )
-
-
-class ChatCompletionChunk(BaseModel):
-    id: Optional[str] = None
-    object: Optional[str] = None
-    created: Optional[int] = None
-    model: Optional[str] = None
-    choices: Optional[List[Dict[str, Any]]] = None
-    error: Optional[str] = None
 
 
 app = FastAPI(
@@ -87,13 +78,23 @@ def serialize_object(obj):
     summary="Create a streaming chat completion",
     description="Create a streaming chat completion with the provided messages",
     response_description="Streaming response with chunks of the completion",
-    response_model=None,
-    response_class=StreamingResponse,
     responses={
         200: {
-            "description": "Stream of chat completion chunks",
+            "description": (
+                "A stream of Server-Sent Events (SSE).\n\n"
+                "Each event follows the format: `data: <json_object>\\n\\n`.\n\n"
+                "The `<json_object>` represents a chunk of the chat completion, "
+                "typically conforming to the `ChatCompletionChunk` schema.\n\n"
+                "The stream may include error objects like `{\"error\": \"...\"}` within the data field.\n\n"
+                "The stream terminates with a final event: `data: [DONE]\\n\\n`."
+            ),
             "content": {
-                "text/event-stream": {"schema": {"type": "string", "format": "binary"}}
+                "text/event-stream": {
+                     "schema": {
+                        "type": "string",
+                        "description": "Server-Sent Events stream. See endpoint description for data format.",
+                    }
+                }
             },
         },
         400: {
