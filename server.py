@@ -36,7 +36,6 @@ class ChatCompletionRequest(BaseModel):
         default=0.95, ge=0.0, le=1.0, description="Controls the nucleus sampling"
     )
 
-
 app = FastAPI(
     title="Weby API",
     description="Weby server using FastAPI",

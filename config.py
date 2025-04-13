@@ -43,17 +43,14 @@ class Config:
         First, let's create the page route file. This will display the user information within a Card component and include a Logout button.
 
         <Edit filename="app/settings/page.tsx">
+        "use client"
+
         import * as React from "react";
         import type { Metadata } from "next";
         import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
         import { Button } from "@/components/ui/button";
         import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
         import { LogOut, User as UserIcon } from "lucide-react"; // Using Lucide Icons
-
-        export const metadata: Metadata = {
-          title: "Settings",
-          description: "Manage your account settings.",
-        };
 
         // Mock user data - replace with actual data fetching logic
         const user = {
