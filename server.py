@@ -181,7 +181,8 @@ async def weby(
         async def generate():
             try:
                 stream = await client.chat.completions.create(
-                    model="deepseek/deepseek-r1-distill-llama-70b:nitro",
+                    # model="deepseek/deepseek-r1-distill-llama-70b:nitro",
+                    model="deepseek/deepseek-chat-v3-0324:nitro",
                     # model="meta-llama/llama-3.1-8b-instruct:nitro",
                     # model="openai/gpt-4o-2024-11-20",
                     # model="google/gemma-3-27b-it:nitro",
