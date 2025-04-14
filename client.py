@@ -2,11 +2,11 @@ import os
 import re
 import json
 from config import Config
-from utils import get_project_structure_detailed
 import requests
+from utils import get_project_structure_detailed
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
-project_path = os.path.join(script_dir, "website")
+project_path = os.path.join(script_dir, "website_nextjs/src/app")
 
 os.makedirs(project_path, exist_ok=True)
 print(f"[*] Project path set to: {project_path}")
@@ -32,7 +32,7 @@ def apply_changes(response_content, base_project_path):
         r"\s*</\1>",
         re.DOTALL | re.IGNORECASE,
     )
-    changes_applied = False
+    changed = False
     abs_project_path = os.path.abspath(base_project_path)
 
     for match in action_pattern.finditer(response_content):
@@ -58,7 +58,8 @@ def apply_changes(response_content, base_project_path):
                 f.write(file_content)
 
             print(f"\n[*] Applied edit to: {relative_filename}")
-            changes_applied = True
+
+            changed = True
         except OSError as e:
             print(f"\n[!] Error writing file '{relative_filename}': {e}")
         except Exception as e:
@@ -66,7 +67,7 @@ def apply_changes(response_content, base_project_path):
                 f"\n[!] An unexpected error occurred while processing file '{relative_filename}': {e}"
             )
 
-    return changes_applied
+    return changed
 
 
 def chat_loop():
@@ -90,28 +91,18 @@ def chat_loop():
 
         try:
             files = get_project_structure_detailed(
-                project_path,
-                [
-                    "node_modules",
-                    ".git",
-                    "__pycache__",
-                    "dist",
-                    "build",
-                    "style.css",
-                    # "package.json",
-                    "package-lock.json",
-                    ".next",
-                    "lib",
-                    "public",
-                    "tsconfig.json",
-                    "next-env.d.ts",
-                    "ui",  # shadcn
+                project_path=project_path,
+                exclude=[
+                    "favicon.ico",
+                    "globals.css",
+                    "layout.tsx",
                 ],
             )
 
             payload = {
                 "messages": chat_history,
                 "files": files,
+                "temperature": 0.6,
             }
 
             with requests.post(
@@ -157,8 +148,8 @@ def chat_loop():
 
             # Post-processing
             if full_response:
-                changes_applied = apply_changes(full_response, project_path)
-                if changes_applied:
+                changed = apply_changes(full_response, project_path)
+                if changed:
                     print("[*] File changes applied successfully.")
 
                 chat_history.append({"role": "assistant", "content": full_response})

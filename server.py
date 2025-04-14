@@ -36,6 +36,7 @@ class ChatCompletionRequest(BaseModel):
         default=0.95, ge=0.0, le=1.0, description="Controls the nucleus sampling"
     )
 
+
 app = FastAPI(
     title="Weby API",
     description="Weby server using FastAPI",
@@ -84,12 +85,12 @@ def serialize_object(obj):
                 "Each event follows the format: `data: <json_object>\\n\\n`.\n\n"
                 "The `<json_object>` represents a chunk of the chat completion, "
                 "typically conforming to the `ChatCompletionChunk` schema.\n\n"
-                "The stream may include error objects like `{\"error\": \"...\"}` within the data field.\n\n"
+                'The stream may include error objects like `{"error": "..."}` within the data field.\n\n'
                 "The stream terminates with a final event: `data: [DONE]\\n\\n`."
             ),
             "content": {
                 "text/event-stream": {
-                     "schema": {
+                    "schema": {
                         "type": "string",
                         "description": "Server-Sent Events stream. See endpoint description for data format.",
                     }
@@ -140,7 +141,28 @@ async def weby(
                 detail="Overriding the default system prompt is not allowed",
             )
 
-        messages = [{"role": "system", "content": Config.SYSTEM_PROMPT + "\n\n" + Config.SHADCN_DOCUMENTATION}]
+        # # Enhance user prompt (TODO: It's should be done everytime? Or only once?)
+        # completion = await client.chat.completions.create(
+        #     # model="deepseek/deepseek-r1-distill-llama-70b:nitro",
+        #     model="meta-llama/llama-3.1-8b-instruct:nitro",
+        #     # model="openai/gpt-4o-2024-11-20",
+        #     # model="google/gemma-3-27b-it:nitro",
+        #     messages=[
+        #         {"role": "system", "content": Config.ENHANCER_SYSTEM_PROMPT},
+        #         request.messages[-1],
+        #     ],
+        #     temperature=request.temperature,
+        #     top_p=request.top_p,
+        # )
+        # print(completion.choices[0].message.content)
+        # request.messages[-1].content = completion.choices[0].message.content
+
+        messages = [
+            {
+                "role": "system",
+                "content": Config.SYSTEM_PROMPT + "\n\n" + Config.SHADCN_DOCUMENTATION,
+            }
+        ]
 
         messages.extend([serialize_object(msg) for msg in request.messages])
 
@@ -152,12 +174,17 @@ async def weby(
             project_context = f"Current project structure: {json.dumps(project_structure, indent=2)}\n\n"
 
             if messages[-1]["role"] == "user":
-                messages[-1]["content"] = project_context + "Request: " + messages[-1]["content"]
+                messages[-1]["content"] = (
+                    project_context + "Request: " + messages[-1]["content"]
+                )
 
         async def generate():
             try:
                 stream = await client.chat.completions.create(
                     model="deepseek/deepseek-r1-distill-llama-70b:nitro",
+                    # model="meta-llama/llama-3.1-8b-instruct:nitro",
+                    # model="openai/gpt-4o-2024-11-20",
+                    # model="google/gemma-3-27b-it:nitro",
                     messages=messages,
                     stream=True,
                     temperature=request.temperature,
