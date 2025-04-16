@@ -142,20 +142,21 @@ async def weby(
             )
 
         # # Enhance user prompt (TODO: It's should be done everytime? Or only once?)
-        # completion = await client.chat.completions.create(
-        #     # model="deepseek/deepseek-r1-distill-llama-70b:nitro",
-        #     model="meta-llama/llama-3.1-8b-instruct:nitro",
-        #     # model="openai/gpt-4o-2024-11-20",
-        #     # model="google/gemma-3-27b-it:nitro",
-        #     messages=[
-        #         {"role": "system", "content": Config.ENHANCER_SYSTEM_PROMPT},
-        #         request.messages[-1],
-        #     ],
-        #     temperature=request.temperature,
-        #     top_p=request.top_p,
-        # )
-        # print(completion.choices[0].message.content)
-        # request.messages[-1].content = completion.choices[0].message.content
+        if len(request.messages) == 1:
+            completion = await client.chat.completions.create(
+                model="deepseek/deepseek-chat-v3-0324:nitro",
+                # model="meta-llama/llama-3.1-8b-instruct:nitro",
+                # model="openai/gpt-4o-2024-11-20",
+                # model="google/gemma-3-27b-it:nitro",
+                messages=[
+                    {"role": "system", "content": Config.ENHANCER_SYSTEM_PROMPT},
+                    request.messages[-1],
+                ],
+                temperature=request.temperature,
+                top_p=request.top_p,
+            )
+            print(completion.choices[0].message.content)
+            request.messages[-1].content = completion.choices[0].message.content
 
         messages = [
             {
@@ -181,7 +182,7 @@ async def weby(
         async def generate():
             try:
                 stream = await client.chat.completions.create(
-                    # model="deepseek/deepseek-r1-distill-llama-70b:nitro",
+                    # model="anthropic/claude-3.7-sonnet",
                     model="deepseek/deepseek-chat-v3-0324:nitro",
                     # model="meta-llama/llama-3.1-8b-instruct:nitro",
                     # model="openai/gpt-4o-2024-11-20",
