@@ -1,11 +1,14 @@
-from fastapi import FastAPI, HTTPException, Depends
-from fastapi.responses import StreamingResponse, JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-from typing import List, Optional, Dict
-from openai import AsyncOpenAI
 import json
+from typing import Dict, List, Optional
+
 import uvicorn
+from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from openai import AsyncOpenAI, AsyncStream
+from openai.types.chat import ChatCompletionChunk
+from pydantic import BaseModel, Field
+from sse_starlette.sse import EventSourceResponse
 
 from config import Config
 
@@ -35,6 +38,15 @@ class ChatCompletionRequest(BaseModel):
     top_p: Optional[float] = Field(
         default=0.95, ge=0.0, le=1.0, description="Controls the nucleus sampling"
     )
+
+
+class ErrorResponse(BaseModel):
+    details: str
+
+
+class ChatCompletionResponseChunk(BaseModel):
+    data: ChatCompletionChunk | None = Field(default=None)
+    error: ErrorResponse | None = Field(default=None)
 
 
 app = FastAPI(
@@ -71,6 +83,10 @@ def serialize_object(obj):
     else:
         # Fallback for other objects
         return dict(obj)
+
+
+def sse_event[T: BaseModel](data: T) -> dict:
+    return {"data": data.model_dump_json()}
 
 
 @app.post(
@@ -130,10 +146,11 @@ def serialize_object(obj):
             },
         },
     },
+    response_model=ChatCompletionResponseChunk,
 )
 async def weby(
     request: ChatCompletionRequest, client: AsyncOpenAI = Depends(get_client)
-) -> StreamingResponse:
+):
     try:
         if any(msg.role == "system" for msg in request.messages):
             raise HTTPException(
@@ -179,9 +196,11 @@ async def weby(
                     project_context + "Request: " + messages[-1]["content"]
                 )
 
-        async def generate():
+        async def generator():
             try:
-                stream = await client.chat.completions.create(
+                stream: AsyncStream[
+                    ChatCompletionChunk
+                ] = await client.chat.completions.create(
                     # model="anthropic/claude-3.7-sonnet",
                     model="deepseek/deepseek-chat-v3-0324:nitro",
                     # model="meta-llama/llama-3.1-8b-instruct:nitro",
@@ -194,16 +213,13 @@ async def weby(
                 )
 
                 async for chunk in stream:
-                    chunk_data = serialize_object(chunk)
-                    yield f"data: {json.dumps(chunk_data)}\n\n"
-
-                yield "data: [DONE]\n\n"
+                    yield sse_event(ChatCompletionResponseChunk(data=chunk))
             except Exception as e:
-                error_data = {"error": str(e)}
-                yield f"data: {json.dumps(error_data)}\n\n"
-                yield "data: [DONE]\n\n"
+                yield sse_event(
+                    ChatCompletionResponseChunk(error=ErrorResponse(details=str(e))),
+                )
 
-        return StreamingResponse(generate(), media_type="text/event-stream")
+        return EventSourceResponse(generator())
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
