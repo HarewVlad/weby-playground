@@ -1,4 +1,6 @@
 import json
+import os
+import re
 from typing import Dict, List, Optional
 
 import uvicorn
@@ -87,6 +89,64 @@ def serialize_object(obj):
 
 def sse_event[T: BaseModel](data: T) -> dict:
     return {"data": data.model_dump_json()}
+
+
+def extract_content_from_chunk(chunk):
+    """
+    Extract content from the specific chunk structure we're receiving.
+    Returns an empty string if no content can be found.
+    """
+    try:
+        # The chunk is a dictionary with a 'data' key containing a JSON string
+        if isinstance(chunk, dict) and "data" in chunk:
+            # Parse the JSON string in 'data'
+            data_json = json.loads(chunk["data"])
+
+            # Navigate to the content field
+            if (
+                "data" in data_json
+                and "choices" in data_json["data"]
+                and data_json["data"]["choices"]
+            ):
+                choice = data_json["data"]["choices"][0]
+                if "delta" in choice and "content" in choice["delta"]:
+                    return choice["delta"]["content"] or ""
+
+        # Fallback for different structures
+        return ""
+    except Exception as e:
+        print(f"Error extracting content from chunk: {e}")
+        print(f"Chunk structure: {chunk}")
+        return ""
+
+
+def process_edit_tags(text):
+    """Process edit tags in the text and write changes to files."""
+    # Define a pattern to match edit tags
+    pattern = r'<Edit filename="([^"]+)">(.+?)</Edit>'
+
+    # Find all matches
+    matches = re.findall(pattern, text, re.DOTALL)
+
+    # Process each match
+    for filename, content in matches:
+        # If specific filename is provided, always write to that path
+        if filename == "page.tsx":
+            target_path = "/root/web-creator/website_nextjs/src/app/page.tsx"
+        else:
+            # Otherwise use the filename directly
+            target_path = filename
+
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+
+        # Write the content to the file
+        with open(target_path, "w") as file:
+            file.write(content)
+
+        print(f"Wrote changes to file: {target_path}")
+
+    return text
 
 
 @app.post(
@@ -212,8 +272,25 @@ async def weby(
                     top_p=request.top_p,
                 )
 
+                # Buffer to accumulate text for processing edit tags
+                buffer = ""
+
                 async for chunk in stream:
-                    yield sse_event(ChatCompletionResponseChunk(data=chunk))
+                    # Extract content safely from the chunk, regardless of its structure
+                    openai_chunk = ChatCompletionResponseChunk(data=chunk)
+
+                    content = openai_chunk.data.choices[0].delta.content
+
+                    # Add to buffer for processing
+                    buffer += content
+
+                    # Forward the chunk to the client
+                    yield sse_event(openai_chunk)
+
+                # Process any remaining content in the buffer
+                if buffer:
+                    process_edit_tags(buffer)
+
             except Exception as e:
                 yield sse_event(
                     ChatCompletionResponseChunk(error=ErrorResponse(details=str(e))),
