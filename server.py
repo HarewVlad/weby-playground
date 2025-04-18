@@ -4,6 +4,7 @@ import re
 from typing import Dict, List, Optional
 
 import uvicorn
+import aiohttp  # Added for making HTTP requests
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -13,6 +14,10 @@ from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
 from config import Config
+
+
+# Configuration for Next.js server
+NEXTJS_SERVER_URL = os.environ.get("NEXTJS_SERVER_URL", "http://localhost:3000")
 
 
 class Message(BaseModel):
@@ -120,31 +125,35 @@ def extract_content_from_chunk(chunk):
         return ""
 
 
-def process_edit_tags(text):
-    """Process edit tags in the text and write changes to files."""
+async def process_edit_tags(text):
+    """Process edit tags in the text and send changes to the Next.js update endpoint."""
     # Define a pattern to match edit tags
     pattern = r'<Edit filename="([^"]+)">(.+?)</Edit>'
 
     # Find all matches
     matches = re.findall(pattern, text, re.DOTALL)
 
-    # Process each match
-    for filename, content in matches:
-        # If specific filename is provided, always write to that path
-        if filename == "page.tsx":
-            target_path = "/root/web-creator/website_nextjs/src/app/page.tsx"
-        else:
-            # Otherwise use the filename directly
-            target_path = filename
+    async with aiohttp.ClientSession() as session:
+        # Process each match
+        for _, content in matches:
+            # Prepare the payload
+            file_path = "src/app/page.tsx"
 
-        # Ensure the directory exists
-        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+            payload = {"file_path": file_path, "content": content}
 
-        # Write the content to the file
-        with open(target_path, "w") as file:
-            file.write(content)
+            try:
+                # Send the content to the Next.js update endpoint
+                update_url = f"{NEXTJS_SERVER_URL}/update"
+                async with session.post(update_url, json=payload) as response:
+                    response_data = await response.json()
 
-        print(f"Wrote changes to file: {target_path}")
+                    if response.status != 200:
+                        print(f"Error updating file {file_path}: {response_data}")
+                    else:
+                        print(f"Successfully updated file: {file_path}")
+
+            except Exception as e:
+                print(f"Error sending update request for {file_path}: {str(e)}")
 
     return text
 
@@ -280,16 +289,16 @@ async def weby(
                     openai_chunk = ChatCompletionResponseChunk(data=chunk)
 
                     content = openai_chunk.data.choices[0].delta.content
-
-                    # Add to buffer for processing
-                    buffer += content
+                    if content:
+                        # Add to buffer for processing
+                        buffer += content
 
                     # Forward the chunk to the client
                     yield sse_event(openai_chunk)
 
                 # Process any remaining content in the buffer
                 if buffer:
-                    process_edit_tags(buffer)
+                    await process_edit_tags(buffer)
 
             except Exception as e:
                 yield sse_event(
