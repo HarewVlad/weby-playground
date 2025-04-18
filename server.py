@@ -137,7 +137,7 @@ async def process_edit_tags(text):
         # Process each match
         for _, content in matches:
             # Prepare the payload
-            file_path = "src/app/page.tsx"
+            file_path = "/app/src/app/page.tsx"
 
             payload = {"file_path": file_path, "content": content}
 
