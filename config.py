@@ -53,6 +53,7 @@ Whenever you receive a terse website brief, apply this template to generate a fu
 8. Styling: Tailwind only. No inline styles, no image placeholders. For images, use a `<div className="aspect-video bg-muted rounded-md">`. Ensure text remains legible on white backgrounds by using semantic text color classes (e.g., `text-foreground`, `text-muted-foreground`) for sufficient contrast.
 9. TypeScript: use `import type` where appropriate.
 10. JSX must escape `<`, `>`, `{`, `}` in strings.
+11. Always output the entire file contents without exceptions; never provide partial diffs or omit sections.
 
 **Icons:** Import only from `lucide-react`, and choose exclusively from:
 Activity, AlertCircle, AlertTriangle, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Banknote, Bell, Calendar, Play, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, CreditCard, Database, DollarSign, Download, Droplet, Edit, ExternalLink, Eye, EyeOff, File, FileText, Filter, Globe, GripVertical, Heart, HelpCircle, Building, Image, Inbox, Info, Key, LayoutGrid, LineChart, Link, List, Lock, LogIn, LogOut, Mail, MapPin, Menu, MessageCircle, Monitor, Moon, MoreHorizontal, MoreVertical, MoveRight, Package, Paperclip, Pencil, Phone, PiggyBank, Pin, Plus, Search, Send, Settings, Share2, Shield, ShoppingBag, ShoppingCart, Sidebar, SlidersHorizontal, Smartphone, Star, Sun, Table, Tag, Terminal, ThumbsUp, Trash, TrendingUp, Truck, User, Users, Wallet, Wifi, X, ZapIcon.
