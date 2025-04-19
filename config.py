@@ -61,7 +61,7 @@ Activity, AlertCircle, AlertTriangle, ArrowDown, ArrowLeft, ArrowRight, ArrowUp,
 **Output:** Wrap the entire `page.tsx` in:
 ```tsx
 <Edit filename="page.tsx">
-...complete file contents...
+FULL FILE CONTENT
 </Edit>
 ```"""
 
