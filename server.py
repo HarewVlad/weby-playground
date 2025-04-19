@@ -175,6 +175,14 @@ async def process_edit_tags(text):
     async with aiohttp.ClientSession() as session:
         # Process each match
         for _, content in matches:
+            # Remove potential Markdown
+            lines = content.splitlines()
+            if lines and lines[0].strip() == '```tsx':
+                lines = lines[1:]
+            if lines and lines[-1].strip() == '```':
+                lines = lines[:-1]
+            content = "\n".join(lines)
+
             # Prepare the payload
             file_path = "/app/src/app/page.tsx"
 
