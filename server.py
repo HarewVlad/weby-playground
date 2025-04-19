@@ -102,11 +102,12 @@ def fix_lucide_imports(content: str) -> str:
     shadcn_pattern = re.compile(
         r"import\s*\{\s*([^\}]+)\s*\}\s*from\s*['\"].*components/ui/[^'\"]+['\"]"
     )
-    shadcn_imports = set(
+    shadcn_imports = {
         name.strip()
         for group in shadcn_pattern.findall(text)
         for name in group.split(",")
-    )
+        if name.strip()
+    }
     used -= shadcn_imports
     if not used:
         return text
@@ -116,7 +117,7 @@ def fix_lucide_imports(content: str) -> str:
     )
     match = import_pattern.search(text)
     if match:
-        existing = {name.strip() for name in match.group(1).split(",")}
+        existing = {name.strip() for name in match.group(1).split(",") if name.strip()}
         missing = used - existing
         if missing:
             new_names = ", ".join(sorted(existing | missing))
@@ -177,9 +178,9 @@ async def process_edit_tags(text):
         for _, content in matches:
             # Remove potential Markdown
             lines = content.splitlines()
-            if lines and lines[0].strip() == '```tsx':
+            if lines and lines[0].strip() == "```tsx":
                 lines = lines[1:]
-            if lines and lines[-1].strip() == '```':
+            if lines and lines[-1].strip() == "```":
                 lines = lines[:-1]
             content = "\n".join(lines)
 
