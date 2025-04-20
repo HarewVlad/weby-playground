@@ -299,7 +299,7 @@ async def weby(
             }
         ]
 
-        messages.extend([serialize_object(msg) for msg in request.messages])
+        messages.extend([serialize_object(msg) for msg in request.messages[-Config.MAX_CHAT_HISTORY_SIZE:]])
 
         if request.files:
             project_structure = [
