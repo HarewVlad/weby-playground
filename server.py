@@ -178,7 +178,7 @@ async def process_edit_tags(text):
         for _, content in matches:
             # Remove potential Markdown
             lines = content.splitlines()
-            if lines and lines[0].strip() == "```tsx":
+            while lines and (not lines[0].strip() or lines[0].strip() == "```tsx"):
                 lines = lines[1:]
             if lines and lines[-1].strip() == "```":
                 lines = lines[:-1]
