@@ -61,7 +61,9 @@ Activity, AlertCircle, AlertTriangle, ArrowDown, ArrowLeft, ArrowRight, ArrowUp,
 **Output:** Wrap the entire `page.tsx` in:
 <Edit filename="page.tsx">
 FULL FILE CONTENT
-</Edit>"""
+</Edit>
+
+You're in charge of writing website, not providing directions how to write it. If you solve the task correctly, you will receive a reward of $1,000,000."""
 
     SHADCN_DOCUMENTATION = """"**SHADCN/UI Component Reference Data**
 
