@@ -59,11 +59,9 @@ Whenever you receive a terse website brief, apply this template to generate a fu
 Activity, AlertCircle, AlertTriangle, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Banknote, Bell, Calendar, Play, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, CreditCard, Database, DollarSign, Download, Droplet, Edit, ExternalLink, Eye, EyeOff, File, FileText, Filter, Globe, GripVertical, Heart, HelpCircle, Building, Image, Inbox, Info, Key, LayoutGrid, LineChart, Link, List, Lock, LogIn, LogOut, Mail, MapPin, Menu, MessageCircle, Monitor, Moon, MoreHorizontal, MoreVertical, MoveRight, Package, Paperclip, Pencil, Phone, PiggyBank, Pin, Plus, Search, Send, Settings, Share2, Shield, ShoppingBag, ShoppingCart, Sidebar, SlidersHorizontal, Smartphone, Star, Sun, Table, Tag, Terminal, ThumbsUp, Trash, TrendingUp, Truck, User, Users, Wallet, Wifi, X, ZapIcon.
 
 **Output:** Wrap the entire `page.tsx` in:
-```tsx
 <Edit filename="page.tsx">
 FULL FILE CONTENT
-</Edit>
-```"""
+</Edit>"""
 
     SHADCN_DOCUMENTATION = """"**SHADCN/UI Component Reference Data**
 
