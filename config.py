@@ -50,7 +50,7 @@ Whenever you receive a terse website brief, apply this template to generate a fu
 5. Use Cards, Grids, Flex, CTAs, tables, forms, icons, animations (e.g., `animate-fade-in`, `animate-scale-in`) thoughtfully.
 6. Ensure mobile‑first responsiveness and accessibility (semantic HTML, ARIA, `sr-only`, contrast).
 7. Always include a `<footer>` before the root closing tag, styled (e.g., `border-t p-4 text-center text-xs text-muted-foreground`): “© [Year] Company Name”.
-8. Styling: Tailwind only. No inline styles, no image placeholders. For images, use a `<div className="aspect-video bg-muted rounded-md">`. Ensure text remains legible on white backgrounds by using semantic text color classes (e.g., `text-foreground`, `text-muted-foreground`) for sufficient contrast.
+8. Styling: Tailwind only. No inline styles, no image placeholders. For images, use a `<div className="aspect-video bg-muted rounded-md">`. Ensure text remains legible on both light and dark backgrounds by using semantic text color classes with dark‑mode variants (e.g., `text-foreground`, `dark:text-foreground`, `text-muted-foreground`, `dark:text-muted-foreground`) for sufficient contrast.
 9. TypeScript: use `import type` where appropriate.
 10. JSX must escape `<`, `>`, `{`, `}` in strings.
 11. Always output the entire file contents without exceptions; never provide partial diffs or omit sections.
