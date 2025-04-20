@@ -63,7 +63,7 @@ Activity, AlertCircle, AlertTriangle, ArrowDown, ArrowLeft, ArrowRight, ArrowUp,
 FULL FILE CONTENT
 </Edit>
 
-You're in charge of writing website, not providing directions how to write it. If you solve the task correctly, you will receive a reward of $1,000,000."""
+You're in charge of writing the website, not providing instructions on how to write it. If you complete the task correctly, you will receive a $1,000,000 reward."""
 
     SHADCN_DOCUMENTATION = """"**SHADCN/UI Component Reference Data**
 
