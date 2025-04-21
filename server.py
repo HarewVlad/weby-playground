@@ -185,7 +185,7 @@ async def process_edit_tags(text):
             content = "\n".join(lines)
 
             # Prepare the payload
-            file_path = "/app/src/app/page.tsx"
+            file_path = "src/app/page.tsx"
 
             payload = {"file_path": file_path, "content": fix_lucide_imports(content)}
 
