@@ -56,6 +56,20 @@ class ChatCompletionResponseChunk(BaseModel):
     error: ErrorResponse | None = Field(default=None)
 
 
+class PromptEnhanceRequest(BaseModel):
+    message: Message = Field(..., description="The user message to enhance")
+    temperature: Optional[float] = Field(
+        default=0.6, ge=0.0, le=1.0, description="Controls randomness in the response"
+    )
+    top_p: Optional[float] = Field(
+        default=0.95, ge=0.0, le=1.0, description="Controls the nucleus sampling"
+    )
+
+
+class PromptEnhanceResponse(BaseModel):
+    enhanced_message: Message = Field(..., description="The enhanced user message")
+
+
 app = FastAPI(
     title="Weby API",
     description="Weby server using FastAPI",
@@ -207,6 +221,38 @@ async def process_edit_tags(text):
 
 
 @app.post(
+    "/prompt-enhance",
+    summary="Enhance a user prompt",
+    description="Process a user message to enhance it for better response generation",
+    response_model=PromptEnhanceResponse,
+)
+async def enhance_prompt(
+    request: PromptEnhanceRequest, client: AsyncOpenAI = Depends(get_client)
+):
+    try:
+        # Call the AI model to enhance the prompt
+        completion = await client.chat.completions.create(
+            model="deepseek/deepseek-chat-v3-0324:nitro",
+            messages=[
+                {"role": "system", "content": Config.ENHANCER_SYSTEM_PROMPT},
+                serialize_object(request.message),
+            ],
+            temperature=request.temperature,
+            top_p=request.top_p,
+        )
+
+        # Create enhanced message with same role but updated content
+        enhanced_message = Message(
+            role=request.message.role, content=completion.choices[0].message.content
+        )
+
+        return PromptEnhanceResponse(enhanced_message=enhanced_message)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post(
     "/v1/weby",
     summary="Create a streaming chat completion",
     description="Create a streaming chat completion with the provided messages",
@@ -275,23 +321,6 @@ async def weby(
                 detail="Overriding the default system prompt is not allowed",
             )
 
-        # # Enhance user prompt (TODO: It's should be done everytime? Or only once?)
-        if len(request.messages) == 1:
-            completion = await client.chat.completions.create(
-                model="deepseek/deepseek-chat-v3-0324:nitro",
-                # model="meta-llama/llama-3.1-8b-instruct:nitro",
-                # model="openai/gpt-4o-2024-11-20",
-                # model="google/gemma-3-27b-it:nitro",
-                messages=[
-                    {"role": "system", "content": Config.ENHANCER_SYSTEM_PROMPT},
-                    request.messages[-1],
-                ],
-                temperature=request.temperature,
-                top_p=request.top_p,
-            )
-            print(completion.choices[0].message.content)
-            request.messages[-1].content = completion.choices[0].message.content
-
         messages = [
             {
                 "role": "system",
@@ -299,7 +328,12 @@ async def weby(
             }
         ]
 
-        messages.extend([serialize_object(msg) for msg in request.messages[-Config.MAX_CHAT_HISTORY_SIZE:]])
+        messages.extend(
+            [
+                serialize_object(msg)
+                for msg in request.messages[-Config.MAX_CHAT_HISTORY_SIZE :]
+            ]
+        )
 
         if request.files:
             project_structure = [
@@ -318,11 +352,7 @@ async def weby(
                 stream: AsyncStream[
                     ChatCompletionChunk
                 ] = await client.chat.completions.create(
-                    # model="anthropic/claude-3.7-sonnet",
                     model="deepseek/deepseek-chat-v3-0324:nitro",
-                    # model="meta-llama/llama-3.1-8b-instruct:nitro",
-                    # model="openai/gpt-4o-2024-11-20",
-                    # model="google/gemma-3-27b-it:nitro",
                     messages=messages,
                     stream=True,
                     temperature=request.temperature,
