@@ -101,7 +101,7 @@ def chat_loop():
 
             payload = {
                 "messages": chat_history,
-                "files": files,
+                # "files": files,
                 "temperature": 0.6,
             }
 
