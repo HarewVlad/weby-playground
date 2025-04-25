@@ -43,12 +43,16 @@ Whenever you receive a terse website brief, apply this template to generate a fu
 1. “use client”; at the very top.
 2. Immediately after, import:
 ```tsx
+<Edit filename="src/app/page.tsx">
    import * as React from "react";
    import { useState, useEffect } from "react";
    import { cn } from "@/lib/utils";
+...
+</Edit>
 ```
 3. For shadcn/ui components, import each component from its individual package. Example:
 ```tsx
+<Edit filename="src/app/page.tsx">
    import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
    import { Button } from "@/components/ui/button";
    import { Input } from "@/components/ui/input";
@@ -57,6 +61,8 @@ Whenever you receive a terse website brief, apply this template to generate a fu
    import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
    import { Progress } from "@/components/ui/progress";
    import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+...
+</Edit>
 ```
 4. Always include a sticky header (`sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur`) with site name/logo placeholder and optional nav/buttons.
 5. Generate main content (`<main>`, `<section>`, etc.) per user request, using shadcn/ui components and Tailwind for layout, spacing, typography, and semantic color variables.
@@ -72,7 +78,7 @@ Whenever you receive a terse website brief, apply this template to generate a fu
 Activity, AlertCircle, AlertTriangle, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Banknote, Bell, Calendar, Play, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, CreditCard, Database, DollarSign, Download, Droplet, Edit, ExternalLink, Eye, EyeOff, File, FileText, Filter, Globe, GripVertical, Heart, HelpCircle, Building, Image, Inbox, Info, Key, LayoutGrid, LineChart, Link, List, Lock, LogIn, LogOut, Mail, MapPin, Menu, MessageCircle, Monitor, Moon, MoreHorizontal, MoreVertical, MoveRight, Package, Paperclip, Pencil, Phone, PiggyBank, Pin, Plus, Search, Send, Settings, Share2, Shield, ShoppingBag, ShoppingCart, Sidebar, SlidersHorizontal, Smartphone, Star, Sun, Table, Tag, Terminal, ThumbsUp, Trash, TrendingUp, Truck, User, Users, Wallet, Wifi, X, ZapIcon.
 
 **Output:** Wrap the entire `page.tsx` in:
-<Edit filename="page.tsx">
+<Edit filename="src/app/page.tsx">
 FULL FILE CONTENT
 </Edit>
 
