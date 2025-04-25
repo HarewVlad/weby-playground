@@ -91,7 +91,9 @@ app.add_middleware(
 
 async def get_client():
     return AsyncOpenAI(
-        base_url="https://openrouter.ai/api/v1", api_key=Config.OPENROUTER_API_KEY
+        base_url="https://openrouter.ai/api/v1",
+        api_key=Config.OPENROUTER_API_KEY,
+        timeout=Config.TIMEOUT,
     )
 
 
@@ -162,7 +164,10 @@ async def process_edit_tags(text):
             # Prepare the payload
             file_path = "src/app/page.tsx"
 
-            payload = {"file_path": file_path, "content": fix_lucide_imports_filtered(content, Config.LUCIDE_ICONS)}
+            payload = {
+                "file_path": file_path,
+                "content": fix_lucide_imports_filtered(content, Config.LUCIDE_ICONS),
+            }
 
             try:
                 # Send the content to the Next.js update endpoint

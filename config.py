@@ -12,6 +12,7 @@ class Config:
     WEBY_API = os.getenv("WEBY_URL")
     LUCIDE_ICONS = load_known_icons("lucide_icons_list.json")
     MAX_CHAT_HISTORY_SIZE = 4
+    TIMEOUT = 1200
     ENHANCER_SYSTEM_PROMPT = """You are **PromptEnhancer**, an AI assistant specialized in taking minimal website briefs and expanding them into rich, production‑ready generation prompts.  
 
 - **Input**: a short, vague description (e.g. “Simple bank website”)  

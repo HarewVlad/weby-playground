@@ -19,336 +19,590 @@ ICON_LIST_PATH = os.path.join(SCRIPT_DIR, "..", "lucide_icons_list.json")
 
 react_code = textwrap.dedent("""
 "use client";
+
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { Kanban, List, Plus, MoreHorizontal, GripVertical, Bell, User, Search, Filter, Settings, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Shield, CreditCard, Banknote, Key, Clock, ChevronRight } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  horizontalListSortingStrategy,
+  useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { useRouter } from "next/navigation";
 
+// SortableItem component implementation
+function SortableItem({ id, children }: { id: string | number; children: React.ReactNode }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
 
-export default function HomePage() {
-const [balance, setBalance] = useState(12500);
-const [bondHoldings, setBondHoldings] = useState(8750);
-const [reservedTithes, setReservedTithes] = useState(4200);
-const [securityLevel, setSecurityLevel] = useState(87);
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
 
-
-const transactions = [
-{ id: 1, type: "deposit", amount: 1500, date: "2023-10-15", description: "Munitorum payroll" },
-{ id: 2, type: "withdrawal", amount: 750, date: "2023-10-14", description: "Forge world tithe" },
-{ id: 3, type: "deposit", amount: 2200, date: "2023-10-12", description: "Trade fleet proceeds" },
-{ id: 4, type: "transfer", amount: 500, date: "2023-10-10", description: "Adeptus Arbites fine" },
-];
-
-
-useEffect(() => {
-// Simulate security level fluctuation
-const interval = setInterval(() => {
-setSecurityLevel(prev => Math.min(100, Math.max(80, prev + (Math.random() > 0.5 ? 1 : -1))));
-}, 3000);
-return () => clearInterval(interval);
-}, []);
-
-
-return (
-<div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950 text-gray-100">
-{/* Header */}
-<header className="sticky top-0 z-50 w-full border-b border-gray-800 bg-gray-900/95 backdrop-blur">
-<div className="container flex h-16 items-center justify-between px-4">
-<div className="flex items-center space-x-2">
-<div className="h-8 w-8 rounded-full bg-gradient-to-br from-yellow-600 to-red-700 flex items-center justify-center">
-<div className="h-6 w-6 rounded-full border-2 border-yellow-400"></div>
-</div>
-<h1 className="text-xl font-bold tracking-tight">
-<span className="bg-gradient-to-r from-yellow-400 to-yellow-600 bg-clip-text text-transparent">
-Bank of Terra Nexus
-</span>
-</h1>
-</div>
-<nav className="hidden md:flex items-center space-x-6">
-<Button variant="ghost" className="text-gray-300 hover:text-yellow-400">
-Services
-</Button>
-<Button variant="ghost" className="text-gray-300 hover:text-yellow-400">
-Investments
-</Button>
-<Button variant="ghost" className="text-gray-300 hover:text-yellow-400">
-Security
-</Button>
-</nav>
-<Button className="bg-yellow-600 hover:bg-yellow-700 text-gray-900">
-Access Creditorium
-</Button>
-</div>
-</header>
-
-
-  {/* Hero Section */}
-  <section className="relative py-20 px-4 overflow-hidden">
-    <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-5"></div>
-    <div className="container mx-auto relative z-10">
-      <div className="max-w-3xl mx-auto text-center">
-        <Badge variant="outline" className="mb-4 bg-gray-800 border-yellow-600 text-yellow-400">
-          By the Emperor's Will
-        </Badge>
-        <h2 className="text-4xl md:text-5xl font-bold mb-6">
-          <span className="bg-gradient-to-r from-yellow-400 to-yellow-600 bg-clip-text text-transparent">
-            Your Wealth Is Safe
-          </span>
-          <br />
-          Under the Emperor's Vigil
-        </h2>
-        <p className="text-xl text-gray-300 mb-8">
-          Securing the Imperium's wealth across millennia with sanctified financial instruments
-          and Omnissiah-blessed encryption.
-        </p>
-        <div className="flex flex-col sm:flex-row justify-center gap-4">
-          <Button className="bg-yellow-600 hover:bg-yellow-700 text-gray-900 px-8 py-6 text-lg">
-            Access Your Creditorium
-          </Button>
-          <Button variant="outline" className="border-yellow-600 text-yellow-400 hover:bg-gray-800 px-8 py-6 text-lg">
-            Discover Our Services
-          </Button>
-        </div>
-      </div>
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      {children}
     </div>
-  </section>
+  );
+}
 
-  {/* Features Section */}
-  <section className="py-16 px-4 bg-gray-900/50 border-y border-gray-800">
-    <div className="container mx-auto">
-      <h3 className="text-2xl font-bold mb-12 text-center">
-        Sanctified Financial Instruments
-      </h3>
-      <div className="grid md:grid-cols-3 gap-8">
-        <Card className="border-gray-800 bg-gray-900/50 hover:bg-gray-900 transition-colors">
-          <CardHeader>
-            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-yellow-600/20 mb-4">
-              <Banknote className="w-6 h-6 text-yellow-400" />
-            </div>
-            <CardTitle className="text-yellow-400">Imperial Credit Accounts</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-300">
-              Secure your standard cred units, with holdings denominated in Terra-standard SU.
-              Protected by the Adeptus Custodes-grade security protocols.
-            </p>
-          </CardContent>
-          <CardFooter>
-            <Button variant="link" className="text-yellow-400 p-0">
-              Learn more <ChevronRight className="ml-1 w-4 h-4" />
-            </Button>
-          </CardFooter>
-        </Card>
+// SortableList component for the columns
+function SortableList({ id, children }: { id: string | number; children: React.ReactNode }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id });
 
-        <Card className="border-gray-800 bg-gray-900/50 hover:bg-gray-900 transition-colors">
-          <CardHeader>
-            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-yellow-600/20 mb-4">
-              <CreditCard className="w-6 h-6 text-yellow-400" />
-            </div>
-            <CardTitle className="text-yellow-400">Adeptus Investment Bonds</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-300">
-              Participate in Holy Missions—minimal risk, sanctified returns. Fund crusades,
-              colonization efforts, and forge world expansions with blessed yields.
-            </p>
-          </CardContent>
-          <CardFooter>
-            <Button variant="link" className="text-yellow-400 p-0">
-              Learn more <ChevronRight className="ml-1 w-4 h-4" />
-            </Button>
-          </CardFooter>
-        </Card>
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
 
-        <Card className="border-gray-800 bg-gray-900/50 hover:bg-gray-900 transition-colors">
-          <CardHeader>
-            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-yellow-600/20 mb-4">
-              <Shield className="w-6 h-6 text-yellow-400" />
-            </div>
-            <CardTitle className="text-yellow-400">Warp-Safe Vaults</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-300">
-              Our Omnissian encryption repels daemon incursions and data-warp anomalies.
-              Gellar field protected storage for your most valuable assets.
-            </p>
-          </CardContent>
-          <CardFooter>
-            <Button variant="link" className="text-yellow-400 p-0">
-              Learn more <ChevronRight className="ml-1 w-4 h-4" />
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
+  return (
+    <div ref={setNodeRef} style={style} {...attributes}>
+      {children}
     </div>
-  </section>
+  );
+}
 
-  {/* Dashboard Preview */}
-  <section className="py-16 px-4">
-    <div className="container mx-auto">
-      <h3 className="text-2xl font-bold mb-8 text-center">
-        Your Imperial Financial Overview
-      </h3>
-      
-      <Tabs defaultValue="overview" className="max-w-4xl mx-auto">
-        <TabsList className="grid w-full grid-cols-3 bg-gray-900 border border-gray-800">
-          <TabsTrigger value="overview" className="data-[state=active]:bg-yellow-600 data-[state=active]:text-gray-900">
-            Overview
-          </TabsTrigger>
-          <TabsTrigger value="transactions" className="data-[state=active]:bg-yellow-600 data-[state=active]:text-gray-900">
-            Transactions
-          </TabsTrigger>
-          <TabsTrigger value="security" className="data-[state=active]:bg-yellow-600 data-[state=active]:text-gray-900">
-            Security
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="overview">
-          <Card className="border-gray-800 bg-gray-900/50">
-            <CardHeader>
-              <CardTitle>Account Summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-gray-800/50 p-6 rounded-lg border border-gray-700">
-                  <h4 className="text-sm font-medium text-gray-400 mb-2">Liquid Credits</h4>
-                  <p className="text-2xl font-bold text-yellow-400">{balance.toLocaleString()} SU</p>
-                </div>
-                <div className="bg-gray-800/50 p-6 rounded-lg border border-gray-700">
-                  <h4 className="text-sm font-medium text-gray-400 mb-2">Bond Holdings</h4>
-                  <p className="text-2xl font-bold text-yellow-400">{bondHoldings.toLocaleString()} SU</p>
-                </div>
-                <div className="bg-gray-800/50 p-6 rounded-lg border border-gray-700">
-                  <h4 className="text-sm font-medium text-gray-400 mb-2">Reserved Tithes</h4>
-                  <p className="text-2xl font-bold text-yellow-400">{reservedTithes.toLocaleString()} SU</p>
-                </div>
-              </div>
+export default function MangaFlow() {
+  const router = useRouter();
+  const [boards] = useState([
+    { id: 1, name: "Personal Reading List", color: "bg-blue-500" },
+    { id: 2, name: "Manga Club Picks", color: "bg-green-500" },
+    { id: 3, name: "Creative Projects", color: "bg-purple-500" },
+    { id: 4, name: "Wishlist", color: "bg-yellow-500" }
+  ]);
 
-              <h4 className="text-lg font-semibold mb-4">Recent Activity</h4>
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead>Date</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {transactions.map((tx) => (
-                    <TableRow key={tx.id} className="border-gray-800 hover:bg-gray-800/30">
-                      <TableCell>{tx.date}</TableCell>
-                      <TableCell>{tx.description}</TableCell>
-                      <TableCell className={`text-right ${tx.type === 'deposit' ? 'text-green-400' : 'text-red-400'}`}>
-                        {tx.type === 'deposit' ? '+' : '-'}{tx.amount.toLocaleString()} SU
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="security">
-          <Card className="border-gray-800 bg-gray-900/50">
-            <CardHeader>
-              <CardTitle>Security Sanctum</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Alert className="bg-yellow-600/10 border-yellow-600/50 mb-6">
-                <Shield className="h-4 w-4 text-yellow-400" />
-                <AlertTitle>Security Status: Sanctified</AlertTitle>
-                <AlertDescription>
-                  Your account is currently under the protection of the Omnissiah's encryption.
-                </AlertDescription>
-              </Alert>
+  const [currentBoard, setCurrentBoard] = useState(boards[0]);
+  const [activeCard, setActiveCard] = useState<any>(null);
+  const [activeList, setActiveList] = useState<any>(null);
 
-              <div className="mb-6">
-                <div className="flex justify-between mb-2">
-                  <Label>Encryption Strength</Label>
-                  <span className="text-yellow-400">{securityLevel}%</span>
-                </div>
-                <Progress value={securityLevel} className="h-2 bg-gray-800" indicatorClassName="bg-yellow-500" />
-              </div>
+  const [lists, setLists] = useState([
+    { id: 1, name: "To Read", boardId: 1 },
+    { id: 2, name: "Reading", boardId: 1 },
+    { id: 3, name: "Completed", boardId: 1 },
+    { id: 4, name: "On Hold", boardId: 1 }
+  ]);
 
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 rounded-full bg-yellow-600/20">
-                      <Key className="w-5 h-5 text-yellow-400" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium">Biometric Scan</h4>
-                      <p className="text-sm text-gray-400">Ember-burned iris recognition</p>
-                    </div>
-                  </div>
-                  <Badge variant="outline" className="border-green-400 text-green-400">
-                    Active
-                  </Badge>
-                </div>
+  const [cards, setCards] = useState([
+    { 
+      id: 1, 
+      listId: 1, 
+      title: "Chainsaw Man", 
+      cover: "https://mangaplus.shueisha.co.jp/drm/title/100140/100140_1db6b9f8b3e8e1f04e1e5b4d9c4d6e3a_1.jpg",
+      progress: 0,
+      chapters: 97,
+      currentPage: 1,
+      totalPages: 200
+    },
+    { 
+      id: 2, 
+      listId: 1, 
+      title: "Jujutsu Kaisen", 
+      cover: "https://mangaplus.shueisha.co.jp/drm/title/100150/100150_1db6b9f8b3e8e1f04e1e5b4d9c4d6e3a_1.jpg",
+      progress: 0,
+      chapters: 200,
+      currentPage: 1,
+      totalPages: 200
+    },
+    { 
+      id: 3, 
+      listId: 2, 
+      title: "One Piece", 
+      cover: "https://mangaplus.shueisha.co.jp/drm/title/100020/100020_1db6b9f8b3e8e1f04e1e5b4d9c4d6e3a_1.jpg",
+      progress: 45,
+      chapters: 1080,
+      currentPage: 450,
+      totalPages: 1080
+    },
+    { 
+      id: 4, 
+      listId: 3, 
+      title: "Berserk", 
+      cover: "https://mangaplus.shueisha.co.jp/drm/title/100040/100040_1db6b9f8b3e8e1f04e1e5b4d9c4d6e3a_1.jpg",
+      progress: 100,
+      chapters: 364,
+      currentPage: 364,
+      totalPages: 364
+    }
+  ]);
 
-                <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 rounded-full bg-yellow-600/20">
-                      <Clock className="w-5 h-5 text-yellow-400" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium">Servo-Key Generator</h4>
-                      <p className="text-sm text-gray-400">Physical cog-key authentication</p>
-                    </div>
-                  </div>
-                  <Badge variant="outline" className="border-green-400 text-green-400">
-                    Active
-                  </Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
-  </section>
+  // State for adding new items
+  const [newListName, setNewListName] = useState("");
+  const [showNewListInput, setShowNewListInput] = useState(false);
+  const [newMangaTitle, setNewMangaTitle] = useState("");
+  const [showNewMangaInput, setShowNewMangaInput] = useState<number | null>(null);
 
-  {/* News Ticker */}
-  <section className="py-4 px-4 bg-gray-900 border-y border-gray-800">
-    <div className="container mx-auto">
-      <div className="flex items-center overflow-hidden">
-        <div className="flex-shrink-0 mr-8 text-yellow-400 font-medium">
-          Imperial Bulletins:
-        </div>
-        <div className="flex-1 overflow-hidden">
-          <div className="whitespace-nowrap animate-marquee">
-            <span className="mx-4">Astra Militarum allocations increased by 12% in Segmentum Solar</span>
-            <span className="mx-4">Ecclesiarchy grants now available for shrine world development</span>
-            <span className="mx-4">New tithe schedules announced for Agri-worlds in Ultima Segmentum</span>
-            <span className="mx-4">Warp storm warnings in effect - transit fees adjusted accordingly</span>
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 10,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  function handleDragStart(event: DragStartEvent) {
+    if (event.active.data.current?.type === "card") {
+      setActiveCard(cards.find(card => card.id === event.active.id));
+    } else if (event.active.data.current?.type === "list") {
+      setActiveList(lists.find(list => list.id === event.active.id));
+    }
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    
+    if (!over) return;
+
+    // Handle card sorting within same list
+    if (active.id !== over.id && active.data.current?.type === "card" && over.data.current?.type === "card") {
+      const activeListId = active.data.current?.listId;
+      const overListId = over.data.current?.listId;
+
+      // If moving within same list
+      if (activeListId === overListId) {
+        setCards((items) => {
+          const oldIndex = items.findIndex(item => item.id === active.id);
+          const newIndex = items.findIndex(item => item.id === over.id);
+          return arrayMove(items, oldIndex, newIndex);
+        });
+      } 
+      // If moving to different list
+      else {
+        setCards((items) => {
+          const activeIndex = items.findIndex(item => item.id === active.id);
+          const updatedItems = [...items];
+          updatedItems[activeIndex] = {
+            ...updatedItems[activeIndex],
+            listId: overListId
+          };
+          return updatedItems;
+        });
+      }
+    }
+
+    // Handle list sorting
+    if (active.id !== over.id && active.data.current?.type === "list" && over.data.current?.type === "list") {
+      setLists((items) => {
+        const oldIndex = items.findIndex(item => item.id === active.id);
+        const newIndex = items.findIndex(item => item.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+
+    setActiveCard(null);
+    setActiveList(null);
+  }
+
+  function handleDragCancel() {
+    setActiveCard(null);
+    setActiveList(null);
+  }
+
+  function handleCardClick(cardId: number) {
+    router.push(`/manga/${cardId}`);
+  }
+
+  function updatePage(cardId: number, increment: boolean) {
+    setCards(prevCards => 
+      prevCards.map(card => 
+        card.id === cardId 
+          ? { 
+              ...card, 
+              currentPage: Math.max(1, Math.min(card.totalPages, increment ? card.currentPage + 1 : card.currentPage - 1)),
+              progress: Math.round((Math.max(1, Math.min(card.totalPages, increment ? card.currentPage + 1 : card.currentPage - 1)) / card.totalPages) * 100)
+            } 
+          : card
+      )
+    );
+  }
+
+  function addNewList() {
+    if (!newListName.trim()) return;
+    
+    const newList = {
+      id: Date.now(),
+      name: newListName,
+      boardId: currentBoard.id
+    };
+
+    setLists([...lists, newList]);
+    setNewListName("");
+    setShowNewListInput(false);
+  }
+
+  function addNewManga(listId: number) {
+    if (!newMangaTitle.trim()) return;
+    
+    const newManga = {
+      id: Date.now(),
+      listId,
+      title: newMangaTitle,
+      cover: "",
+      progress: 0,
+      chapters: 0,
+      currentPage: 1,
+      totalPages: 200
+    };
+
+    setCards([...cards, newManga]);
+    setNewMangaTitle("");
+    setShowNewMangaInput(null);
+  }
+
+  function removeManga(cardId: number, e: React.MouseEvent) {
+    e.stopPropagation();
+    setCards(cards.filter(card => card.id !== cardId));
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-100">
+      {/* Header */}
+      <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur">
+        <div className="container flex h-14 items-center justify-between px-4">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center">
+              <Kanban className="h-5 w-5 mr-2 text-blue-600" />
+              <span className="font-bold">MangaFlow</span>
+            </div>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="flex items-center">
+                  {currentBoard.name}
+                  <MoreHorizontal className="ml-1 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {boards.map(board => (
+                  <DropdownMenuItem 
+                    key={board.id} 
+                    onClick={() => setCurrentBoard(board)}
+                    className="flex items-center"
+                  >
+                    <div className={`w-3 h-3 rounded-full mr-2 ${board.color}`}></div>
+                    {board.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          <div className="flex items-center space-x-4">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search..."
+                className="pl-8 w-[150px] md:w-[200px] lg:w-[300px]"
+              />
+            </div>
+            <Button variant="ghost" size="icon">
+              <Bell className="h-5 w-5" />
+            </Button>
+            <Avatar className="h-8 w-8">
+              <AvatarFallback>U</AvatarFallback>
+            </Avatar>
           </div>
         </div>
-      </div>
-    </div>
-  </section>
+      </header>
 
-  {/* Footer */}
-  <footer className="border-t border-gray-800 py-6 px-4 text-center text-sm text-gray-500">
-    <div className="container mx-auto">
-      <p>© {new Date().getFullYear()} Bank of Terra Nexus. All rights reserved by Imperial decree.</p>
-      <p className="mt-2">
-        The Emperor protects. Your wealth is sanctified under His eternal vigilance.
-      </p>
-    </div>
-  </footer>
-</div>
+      <main className="container px-4 py-6">
+        {/* Board Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center">
+            <div className={`w-3 h-3 rounded-full mr-2 ${currentBoard.color}`}></div>
+            <h1 className="text-xl font-bold">{currentBoard.name}</h1>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" size="sm">
+              <Filter className="mr-2 h-4 w-4" />
+              Filter
+            </Button>
+            <Button variant="outline" size="sm">
+              <Settings className="mr-2 h-4 w-4" />
+              Settings
+            </Button>
+          </div>
+        </div>
 
-);
+        {/* Board Content */}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
+        >
+          <div className="flex items-start overflow-x-auto pb-4">
+            <SortableContext 
+              items={lists.filter(list => list.boardId === currentBoard.id).map(list => list.id)} 
+              strategy={horizontalListSortingStrategy}
+            >
+              {lists.filter(list => list.boardId === currentBoard.id).map(list => (
+                <SortableList key={list.id} id={list.id}>
+                  <div className="w-72 min-w-[288px] mr-4" data-list-id={list.id}>
+                    <div className="bg-white rounded-lg shadow">
+                      {/* List Header */}
+                      <div className="px-4 py-2 border-b flex items-center justify-between">
+                        <div className="flex items-center">
+                          <List className="h-4 w-4 mr-2 text-muted-foreground" />
+                          <h3 className="font-medium">{list.name}</h3>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-6 w-6">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      {/* Cards */}
+                      <div className="p-2 space-y-2">
+                        <SortableContext 
+                          items={cards.filter(card => card.listId === list.id).map(card => card.id)} 
+                          strategy={verticalListSortingStrategy}
+                        >
+                          {cards.filter(card => card.listId === list.id).map(card => (
+                            <SortableItem key={card.id} id={card.id}>
+                              <Card 
+                                className="group cursor-pointer hover:bg-slate-50 relative"
+                                onClick={() => handleCardClick(card.id)}
+                              >
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100"
+                                  onClick={(e) => removeManga(card.id, e)}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                                <CardHeader className="p-3">
+                                  <div className="aspect-[3/4] bg-muted rounded mb-2 overflow-hidden h-32">
+                                    {card.cover && (
+                                      <div className="w-full h-full bg-cover bg-center" 
+                                          style={{ backgroundImage: `url(${card.cover})` }} />
+                                    )}
+                                  </div>
+                                  <CardTitle className="text-base">{card.title}</CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-3 pt-0">
+                                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                                    <span>Page {card.currentPage}/{card.totalPages}</span>
+                                    <GripVertical className="h-4 w-4 opacity-0 group-hover:opacity-100" />
+                                  </div>
+                                  <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                                    <div 
+                                      className="bg-blue-600 h-1.5 rounded-full" 
+                                      style={{ width: `${(card.currentPage / card.totalPages) * 100}%` }}
+                                    />
+                                  </div>
+                                </CardContent>
+                                <CardFooter className="p-3 pt-0 flex justify-between">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-8 w-8 p-0"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      updatePage(card.id, false);
+                                    }}
+                                    disabled={card.currentPage <= 1}
+                                  >
+                                    <ChevronLeft className="h-4 w-4" />
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-8 w-8 p-0"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      updatePage(card.id, true);
+                                    }}
+                                    disabled={card.currentPage >= card.totalPages}
+                                  >
+                                    <ChevronRight className="h-4 w-4" />
+                                  </Button>
+                                </CardFooter>
+                              </Card>
+                            </SortableItem>
+                          ))}
+                        </SortableContext>
+
+                        {showNewMangaInput === list.id ? (
+                          <div className="space-y-2">
+                            <Input
+                              placeholder="Enter manga title"
+                              value={newMangaTitle}
+                              onChange={(e) => setNewMangaTitle(e.target.value)}
+                              autoFocus
+                            />
+                            <div className="flex space-x-2">
+                              <Button 
+                                size="sm" 
+                                onClick={() => addNewManga(list.id)}
+                                disabled={!newMangaTitle.trim()}
+                              >
+                                Add Manga
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => {
+                                  setNewMangaTitle("");
+                                  setShowNewMangaInput(null);
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="w-full justify-start text-muted-foreground"
+                            onClick={() => setShowNewMangaInput(list.id)}
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add a card
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </SortableList>
+              ))}
+            </SortableContext>
+
+            {/* Add new list */}
+            <div className="w-72 min-w-[288px]">
+              {showNewListInput ? (
+                <div className="bg-white rounded-lg shadow p-4 space-y-2">
+                  <Input
+                    placeholder="Enter list name"
+                    value={newListName}
+                    onChange={(e) => setNewListName(e.target.value)}
+                    autoFocus
+                  />
+                  <div className="flex space-x-2">
+                    <Button 
+                      size="sm" 
+                      onClick={addNewList}
+                      disabled={!newListName.trim()}
+                    >
+                      Add List
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => {
+                        setNewListName("");
+                        setShowNewListInput(false);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button 
+                  variant="ghost" 
+                  className="w-full justify-start text-muted-foreground bg-white/50 hover:bg-white/70"
+                  onClick={() => setShowNewListInput(true)}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add another list
+                </Button>
+              )}
+            </div>
+          </div>
+          
+          <DragOverlay>
+            {activeCard ? (
+              <Card className="shadow-lg w-64">
+                <CardHeader className="p-3">
+                  <div className="aspect-[3/4] bg-muted rounded mb-2 overflow-hidden h-32">
+                    {activeCard.cover && (
+                      <div className="w-full h-full bg-cover bg-center" 
+                          style={{ backgroundImage: `url(${activeCard.cover})` }} />
+                    )}
+                  </div>
+                  <CardTitle className="text-base">{activeCard.title}</CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 pt-0">
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <span>Page {activeCard.currentPage}/{activeCard.totalPages}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                    <div 
+                      className="bg-blue-600 h-1.5 rounded-full" 
+                      style={{ width: `${(activeCard.currentPage / activeCard.totalPages) * 100}%` }}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {activeList ? (
+              <div className="w-72 min-w-[288px] mr-4">
+                <div className="bg-white rounded-lg shadow opacity-80">
+                  <div className="px-4 py-2 border-b flex items-center justify-between">
+                    <div className="flex items-center">
+                      <List className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <h3 className="font-medium">{activeList.name}</h3>
+                    </div>
+                  </div>
+                  <div className="p-2 space-y-2">
+                    {cards.filter(card => card.listId === activeList.id).slice(0, 3).map(card => (
+                      <div key={card.id} className="h-16 bg-gray-100 rounded"></div>
+                    ))}
+                    {cards.filter(card => card.listId === activeList.id).length > 3 && (
+                      <div className="text-center text-sm text-muted-foreground">
+                        +{cards.filter(card => card.listId === activeList.id).length - 3} more
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+      </main>
+    </div>
+  );
 }
 """)
 

@@ -144,7 +144,7 @@ def fix_lucide_imports_filtered(
         return code_content
 
     # 1. Find all potential Component usages (capitalized JSX tags)
-    component_usage_pattern = re.compile(r"<([A-Z][A-Za-z0-9_]+)(?:\s|/>|>)")
+    component_usage_pattern = re.compile(r"<([A-Z][A-Za-z0-9_]*)(?:\s|/>|>)")
     potential_components_in_jsx = set(component_usage_pattern.findall(code_content))
     print(f"Potential components found in JSX: {potential_components_in_jsx}")
 
