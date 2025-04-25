@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
 from config import Config
+from utils import fix_lucide_imports_filtered
 
 
 # Configuration for Next.js server
@@ -110,46 +111,6 @@ def sse_event[T: BaseModel](data: T) -> dict:
     return {"data": data.model_dump_json()}
 
 
-def fix_lucide_imports(content: str) -> str:
-    text = content
-    used = set(re.findall(r"<([A-Z][A-Za-z0-9_]*)\b", text))
-    shadcn_pattern = re.compile(
-        r"import\s*\{\s*([^\}]+)\s*\}\s*from\s*['\"].*components/ui/[^'\"]+['\"]"
-    )
-    shadcn_imports = {
-        name.strip()
-        for group in shadcn_pattern.findall(text)
-        for name in group.split(",")
-        if name.strip()
-    }
-    used -= shadcn_imports
-    if not used:
-        return text
-
-    import_pattern = re.compile(
-        r"import\s*\{\s*([^\}]+)\s*\}\s*from\s*['\"]lucide-react['\"]"
-    )
-    match = import_pattern.search(text)
-    if match:
-        existing = {name.strip() for name in match.group(1).split(",") if name.strip()}
-        missing = used - existing
-        if missing:
-            new_names = ", ".join(sorted(existing | missing))
-            new_import = f"import {{ {new_names} }} from 'lucide-react'"
-            text = import_pattern.sub(new_import, text)
-    else:
-        names = ", ".join(sorted(used))
-        import_line = f"import {{ {names} }} from 'lucide-react'\n"
-        lines = text.splitlines(keepends=True)
-        idx = next(
-            (i for i, l in enumerate(lines) if not l.startswith("import")), len(lines)
-        )
-        lines.insert(idx, import_line)
-        text = "".join(lines)
-
-    return text
-
-
 def extract_content_from_chunk(chunk):
     """
     Extract content from the specific chunk structure we're receiving.
@@ -201,7 +162,7 @@ async def process_edit_tags(text):
             # Prepare the payload
             file_path = "src/app/page.tsx"
 
-            payload = {"file_path": file_path, "content": fix_lucide_imports(content)}
+            payload = {"file_path": file_path, "content": fix_lucide_imports_filtered(content, Config.LUCIDE_ICONS)}
 
             try:
                 # Send the content to the Next.js update endpoint
@@ -352,7 +313,7 @@ async def weby(
                 stream: AsyncStream[
                     ChatCompletionChunk
                 ] = await client.chat.completions.create(
-                    model="deepseek/deepseek-chat-v3-0324:nitro",
+                    model="deepseek/deepseek-chat-v3-0324:Lambda",
                     messages=messages,
                     stream=True,
                     temperature=request.temperature,

@@ -101,7 +101,7 @@ def chat_loop():
 
             payload = {
                 "messages": chat_history,
-                # "files": files,
+                # "files": files,  # Uncomment if you want to send files
                 "temperature": 0.6,
             }
 
@@ -127,19 +127,30 @@ def chat_loop():
 
                         try:
                             chunk = json.loads(data)
-                            if "error" in chunk:
-                                print(f"\n[!] Error from server: {chunk['error']}")
+
+                            # Check for error first
+                            if "error" in chunk and chunk["error"]:
+                                print(
+                                    f"\n[!] Error from server: {chunk['error'].get('details', chunk['error'])}"
+                                )
                                 break
 
-                            if "choices" in chunk and chunk["choices"]:
-                                content_delta = (
-                                    chunk["choices"][0]
-                                    .get("delta", {})
-                                    .get("content", "")
+                            # The server wraps the ChatCompletionChunk in a ChatCompletionResponseChunk
+                            # which has a structure like: {"data": {...}, "error": None}
+                            if (
+                                "data" in chunk
+                                and chunk["data"]
+                                and "choices" in chunk["data"]
+                            ):
+                                choice = chunk["data"]["choices"][0]
+                                content_delta = choice.get("delta", {}).get(
+                                    "content", ""
                                 )
+
                                 if content_delta:
                                     print(content_delta, end="", flush=True)
                                     full_response += content_delta
+
                         except json.JSONDecodeError:
                             print(f"\n[!] Error decoding JSON from server: {data}")
                             continue

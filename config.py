@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+from utils import load_known_icons
 
 # Load environment variables
 load_dotenv()
@@ -9,6 +10,7 @@ class Config:
     OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
     GROQ_API_KEY = os.getenv("GROQ_API_KEY")
     WEBY_API = os.getenv("WEBY_URL")
+    LUCIDE_ICONS = load_known_icons("lucide_icons_list.json")
     MAX_CHAT_HISTORY_SIZE = 4
     ENHANCER_SYSTEM_PROMPT = """You are **PromptEnhancer**, an AI assistant specialized in taking minimal website briefs and expanding them into rich, production‑ready generation prompts.  
 
