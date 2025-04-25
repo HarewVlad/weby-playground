@@ -152,7 +152,7 @@ async def process_edit_tags(text):
 
     async with aiohttp.ClientSession() as session:
         # Process each match
-        for _, content in matches:
+        for file_path, content in matches:
             # Remove potential Markdown
             lines = content.splitlines()
             while lines and (not lines[0].strip() or lines[0].strip() == "```tsx"):
@@ -160,9 +160,6 @@ async def process_edit_tags(text):
             if lines and lines[-1].strip() == "```":
                 lines = lines[:-1]
             content = "\n".join(lines)
-
-            # Prepare the payload
-            file_path = "src/app/page.tsx"
 
             payload = {
                 "file_path": file_path,
@@ -198,7 +195,8 @@ async def enhance_prompt(
     try:
         # Call the AI model to enhance the prompt
         completion = await client.chat.completions.create(
-            model="deepseek/deepseek-chat-v3-0324:nitro",
+            # model="deepseek/deepseek-chat-v3-0324:nitro",
+            model="thudm/glm-4-32b:nitro",
             messages=[
                 {"role": "system", "content": Config.ENHANCER_SYSTEM_PROMPT},
                 serialize_object(request.message),
