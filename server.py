@@ -1,10 +1,7 @@
 import json
-import os
-import re
 from typing import Dict, List, Optional
 
 import uvicorn
-import aiohttp
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -14,11 +11,6 @@ from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
 from config import Config
-from utils import fix_lucide_imports_filtered
-
-
-# Configuration for Next.js server
-NEXTJS_SERVER_URL = os.environ.get("NEXTJS_SERVER_URL", "http://localhost:3000")
 
 
 class Message(BaseModel):
@@ -140,47 +132,6 @@ def extract_content_from_chunk(chunk):
         print(f"Error extracting content from chunk: {e}")
         print(f"Chunk structure: {chunk}")
         return ""
-
-
-async def process_edit_tags(text):
-    """Process edit tags in the text and send changes to the Next.js update endpoint."""
-    # Define a pattern to match edit tags
-    pattern = r'<Edit filename="([^"]+)">(.+?)</Edit>'
-
-    # Find all matches
-    matches = re.findall(pattern, text, re.DOTALL)
-
-    async with aiohttp.ClientSession() as session:
-        # Process each match
-        for file_path, content in matches:
-            # Remove potential Markdown
-            lines = content.splitlines()
-            while lines and (not lines[0].strip() or lines[0].strip() == "```tsx"):
-                lines = lines[1:]
-            if lines and lines[-1].strip() == "```":
-                lines = lines[:-1]
-            content = "\n".join(lines)
-
-            payload = {
-                "file_path": file_path,
-                "content": fix_lucide_imports_filtered(content, Config.LUCIDE_ICONS),
-            }
-
-            try:
-                # Send the content to the Next.js update endpoint
-                update_url = f"{NEXTJS_SERVER_URL}/update"
-                async with session.post(update_url, json=payload) as response:
-                    response_data = await response.json()
-
-                    if response.status != 200:
-                        print(f"Error updating file {file_path}: {response_data}")
-                    else:
-                        print(f"Successfully updated file: {file_path}")
-
-            except Exception as e:
-                print(f"Error sending update request for {file_path}: {str(e)}")
-
-    return text
 
 
 @app.post(
@@ -313,34 +264,21 @@ async def weby(
 
         async def generator():
             try:
-                stream: AsyncStream[
-                    ChatCompletionChunk
-                ] = await client.chat.completions.create(
-                    model="deepseek/deepseek-chat-v3-0324:Lambda",
-                    messages=messages,
-                    stream=True,
-                    temperature=request.temperature,
-                    top_p=request.top_p,
+                stream: AsyncStream[ChatCompletionChunk] = (
+                    await client.chat.completions.create(
+                        model="deepseek/deepseek-chat-v3-0324:Lambda",
+                        messages=messages,
+                        stream=True,
+                        temperature=request.temperature,
+                        top_p=request.top_p,
+                    )
                 )
-
-                # Buffer to accumulate text for processing edit tags
-                buffer = ""
 
                 async for chunk in stream:
                     # Extract content safely from the chunk, regardless of its structure
                     openai_chunk = ChatCompletionResponseChunk(data=chunk)
-
-                    content = openai_chunk.data.choices[0].delta.content
-                    if content:
-                        # Add to buffer for processing
-                        buffer += content
-
                     # Forward the chunk to the client
                     yield sse_event(openai_chunk)
-
-                # Process any remaining content in the buffer
-                if buffer:
-                    await process_edit_tags(buffer)
 
             except Exception as e:
                 yield sse_event(
