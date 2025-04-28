@@ -1,5 +1,5 @@
 import json
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Literal
 
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException
@@ -37,6 +37,9 @@ class ChatCompletionRequest(BaseModel):
     )
     top_p: Optional[float] = Field(
         default=0.95, ge=0.0, le=1.0, description="Controls the nucleus sampling"
+    )
+    framework: Optional[Literal["Nextjs", "Flutter"]] = Field(
+        default="Nextjs", description="The framework to use for code generation"
     )
 
 
@@ -171,59 +174,6 @@ async def enhance_prompt(
     "/v1/weby",
     summary="Create a streaming chat completion",
     description="Create a streaming chat completion with the provided messages",
-    response_description="Streaming response with chunks of the completion",
-    responses={
-        200: {
-            "description": (
-                "A stream of Server-Sent Events (SSE).\n\n"
-                "Each event follows the format: `data: <json_object>\\n\\n`.\n\n"
-                "The `<json_object>` represents a chunk of the chat completion, "
-                "typically conforming to the `ChatCompletionChunk` schema.\n\n"
-                'The stream may include error objects like `{"error": "..."}` within the data field.\n\n'
-                "The stream terminates with a final event: `data: [DONE]\\n\\n`."
-            ),
-            "content": {
-                "text/event-stream": {
-                    "schema": {
-                        "type": "string",
-                        "description": "Server-Sent Events stream. See endpoint description for data format.",
-                    }
-                }
-            },
-        },
-        400: {
-            "description": "Bad Request - System prompt override not allowed",
-            "content": {
-                "application/json": {
-                    "schema": {
-                        "type": "object",
-                        "properties": {
-                            "detail": {
-                                "type": "string",
-                                "example": "Overriding the default system prompt is not allowed",
-                            }
-                        },
-                    }
-                }
-            },
-        },
-        500: {
-            "description": "Internal Server Error",
-            "content": {
-                "application/json": {
-                    "schema": {
-                        "type": "object",
-                        "properties": {
-                            "error": {
-                                "type": "string",
-                                "example": "An unexpected error occurred",
-                            }
-                        },
-                    }
-                }
-            },
-        },
-    },
     response_model=ChatCompletionResponseChunk,
 )
 async def weby(
@@ -236,12 +186,20 @@ async def weby(
                 detail="Overriding the default system prompt is not allowed",
             )
 
-        messages = [
-            {
-                "role": "system",
-                "content": Config.SYSTEM_PROMPT + "\n\n" + Config.SHADCN_DOCUMENTATION,
-            }
-        ]
+        if request.framework == "Nextjs":
+            messages = [
+                {
+                    "role": "system",
+                    "content": Config.NEXTJS_SYSTEM_PROMPT + "\n\n" + Config.SHADCN_DOCUMENTATION,
+                }
+            ]
+        else:
+            messages = [
+                {
+                    "role": "system",
+                    "content": Config.FLUTTER_SYSTEM_PROMPT,
+                }
+            ]
 
         messages.extend(
             [
@@ -264,14 +222,14 @@ async def weby(
 
         async def generator():
             try:
-                stream: AsyncStream[ChatCompletionChunk] = (
-                    await client.chat.completions.create(
-                        model="deepseek/deepseek-chat-v3-0324:Lambda",
-                        messages=messages,
-                        stream=True,
-                        temperature=request.temperature,
-                        top_p=request.top_p,
-                    )
+                stream: AsyncStream[
+                    ChatCompletionChunk
+                ] = await client.chat.completions.create(
+                    model="deepseek/deepseek-chat-v3-0324:Lambda",
+                    messages=messages,
+                    stream=True,
+                    temperature=request.temperature,
+                    top_p=request.top_p,
                 )
 
                 async for chunk in stream:
