@@ -185,7 +185,7 @@ async def weby(
                 {"file_path": file.file_path, "content": file.content}
                 for file in request.files
             ]
-            project_context = f"Current project structure: {json.dumps(project_structure, indent=2)}\n\n"
+            project_context = f"Additional files: {json.dumps(project_structure, indent=2)}\n\n"
 
             if messages[-1]["role"] == "user":
                 messages[-1]["content"] = (
