@@ -227,7 +227,8 @@ async def weby(
                     ChatCompletionChunk
                 ] = await client.chat.completions.create(
                     # model="deepseek/deepseek-chat-v3-0324:Lambda",
-                    model="qwen/qwen3-30b-a3b:nitro",
+                    # model="qwen/qwen3-30b-a3b:nitro",
+                    model="thudm/glm-4-32b:nitro",
                     messages=messages,
                     stream=True,
                     temperature=request.temperature,
