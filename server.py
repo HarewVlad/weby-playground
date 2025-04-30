@@ -108,35 +108,6 @@ def sse_event[T: BaseModel](data: T) -> dict:
     return {"data": data.model_dump_json()}
 
 
-def extract_content_from_chunk(chunk):
-    """
-    Extract content from the specific chunk structure we're receiving.
-    Returns an empty string if no content can be found.
-    """
-    try:
-        # The chunk is a dictionary with a 'data' key containing a JSON string
-        if isinstance(chunk, dict) and "data" in chunk:
-            # Parse the JSON string in 'data'
-            data_json = json.loads(chunk["data"])
-
-            # Navigate to the content field
-            if (
-                "data" in data_json
-                and "choices" in data_json["data"]
-                and data_json["data"]["choices"]
-            ):
-                choice = data_json["data"]["choices"][0]
-                if "delta" in choice and "content" in choice["delta"]:
-                    return choice["delta"]["content"] or ""
-
-        # Fallback for different structures
-        return ""
-    except Exception as e:
-        print(f"Error extracting content from chunk: {e}")
-        print(f"Chunk structure: {chunk}")
-        return ""
-
-
 @app.post(
     "/prompt-enhance",
     summary="Enhance a user prompt",
