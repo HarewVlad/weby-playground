@@ -150,7 +150,8 @@ async def enhance_prompt(
         # Call the AI model to enhance the prompt
         completion = await client.chat.completions.create(
             # model="deepseek/deepseek-chat-v3-0324:nitro",
-            model="thudm/glm-4-32b:nitro",
+            # model="thudm/glm-4-32b:nitro",
+            model="qwen/qwen3-30b-a3b:nitro",
             messages=[
                 {"role": "system", "content": Config.ENHANCER_SYSTEM_PROMPT},
                 serialize_object(request.message),
