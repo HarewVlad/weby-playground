@@ -66,6 +66,21 @@ class PromptEnhanceResponse(BaseModel):
     enhanced_message: Message = Field(..., description="The enhanced user message")
 
 
+# New models for project name generation
+class ProjectNameRequest(BaseModel):
+    prompt: str = Field(..., description="User input to generate a project name from")
+    temperature: Optional[float] = Field(
+        default=0.7, ge=0.0, le=1.0, description="Controls randomness in the response"
+    )
+    top_p: Optional[float] = Field(
+        default=0.95, ge=0.0, le=1.0, description="Controls the nucleus sampling"
+    )
+
+
+class ProjectNameResponse(BaseModel):
+    project_name: str = Field(..., description="Generated project name")
+
+
 app = FastAPI(
     title="Weby API",
     description="Weby server using FastAPI",
@@ -122,7 +137,7 @@ async def enhance_prompt(
         completion = await client.chat.completions.create(
             # model="deepseek/deepseek-chat-v3-0324:nitro",
             # model="thudm/glm-4-32b:nitro",
-            model="qwen/qwen3-30b-a3b:nitro",
+            model=Config.CODE_GENERATION_MODEL,
             messages=[
                 {"role": "system", "content": Config.ENHANCER_SYSTEM_PROMPT},
                 serialize_object(request.message),
@@ -137,6 +152,39 @@ async def enhance_prompt(
         )
 
         return PromptEnhanceResponse(enhanced_message=enhanced_message)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post(
+    "/project_name",
+    summary="Generate a project name",
+    description="Generate a project name based on user input",
+    response_model=ProjectNameResponse,
+)
+async def generate_project_name(
+    request: ProjectNameRequest, client: AsyncOpenAI = Depends(get_client)
+):
+    try:
+        # Call the AI model to generate a project name
+        completion = await client.chat.completions.create(
+            model=Config.CODE_GENERATION_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": Config.PROJECT_NAME_SYSTEM_PROMPT,
+                },
+                {"role": "user", "content": request.prompt},
+            ],
+            temperature=request.temperature,
+            top_p=request.top_p,
+        )
+
+        # Extract the project name from the response
+        project_name = completion.choices[0].message.content.strip()
+
+        return ProjectNameResponse(project_name=project_name)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -162,7 +210,9 @@ async def weby(
             messages = [
                 {
                     "role": "system",
-                    "content": Config.NEXTJS_SYSTEM_PROMPT + "\n\n" + Config.SHADCN_DOCUMENTATION,
+                    "content": Config.NEXTJS_SYSTEM_PROMPT
+                    + "\n\n"
+                    + Config.SHADCN_DOCUMENTATION,
                 }
             ]
         else:
@@ -185,11 +235,13 @@ async def weby(
                 {"file_path": file.file_path, "content": file.content}
                 for file in request.files
             ]
-            project_context = f"Additional files: {json.dumps(project_structure, indent=2)}\n\n"
+            project_context = (
+                f"Additional files: {json.dumps(project_structure, indent=2)}\n\n"
+            )
 
             if messages[-1]["role"] == "user":
                 messages[-1]["content"] = (
-                    project_context + "Request: " + messages[-1]["content"]
+                    "Request: " + messages[-1]["content"] + project_context
                 )
 
         async def generator():
@@ -198,7 +250,7 @@ async def weby(
                     ChatCompletionChunk
                 ] = await client.chat.completions.create(
                     # model="deepseek/deepseek-chat-v3-0324:Lambda",
-                    model="qwen/qwen3-235b-a22b:nitro",
+                    model=Config.CODE_GENERATION_MODEL,
                     messages=messages,
                     stream=True,
                     temperature=request.temperature,

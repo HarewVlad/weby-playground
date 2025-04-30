@@ -11,6 +11,8 @@ class Config:
     WEBY_API = os.getenv("WEBY_URL")
     MAX_CHAT_HISTORY_SIZE = 4
     TIMEOUT = 1200
+    CODE_GENERATION_MODEL = os.getenv("MODEL", "qwen/qwen3-235b-a22b:nitro")
+    PROJECT_NAME_SYSTEM_PROMPT = "You are a helpful assistant that generates concise, memorable project names. Given a prompt describing a project, generate a short, catchy name that reflects the project's purpose. Return ONLY the project name without any additional text, explanations, or formatting."
     ENHANCER_SYSTEM_PROMPT = """You are **PromptEnhancer**, an AI assistant specialized in taking minimal website briefs and expanding them into rich, production‑ready generation prompts.  
 
 - **Input**: a short, vague description (e.g. “Simple bank website”)  
