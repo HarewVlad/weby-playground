@@ -38,8 +38,12 @@ class ChatCompletionRequest(BaseModel):
     top_p: Optional[float] = Field(
         default=0.95, ge=0.0, le=1.0, description="Controls the nucleus sampling"
     )
-    framework: Optional[Literal["Nextjs", "Flutter"]] = Field(
+    framework: Optional[Literal["Nextjs", "Flutter", "HTML"]] = Field(
         default="Nextjs", description="The framework to use for code generation"
+    )
+    html_model: Optional[float] = Field(
+        default=Config.HTML_GENERATION_MODEL,
+        description="Model for html code generation",
     )
 
 
@@ -215,6 +219,13 @@ async def weby(
                     + Config.SHADCN_DOCUMENTATION,
                 }
             ]
+        elif request.framework == "HTML":
+            messages = [
+                {
+                    "role": "system",
+                    "content": Config.HTML_SYSTEM_PROMPT,
+                }
+            ]
         else:
             messages = [
                 {
@@ -246,16 +257,44 @@ async def weby(
 
         async def generator():
             try:
-                stream: AsyncStream[
-                    ChatCompletionChunk
-                ] = await client.chat.completions.create(
-                    # model="deepseek/deepseek-chat-v3-0324:Lambda",
-                    model=Config.CODE_GENERATION_MODEL,
-                    messages=messages,
-                    stream=True,
-                    temperature=request.temperature,
-                    top_p=request.top_p,
-                )
+                if request.framework == "HTML":
+                    if request.html_model == "Tesslate/UIGEN-T2-7B":
+                        runpopd_client = AsyncOpenAI(
+                            api_key=Config.RUNPOD_API_KEY,
+                            base_url="https://api.runpod.ai/v2/595y9yzfcgqczt/openai/v1",
+                            timeout=Config.TIMEOUT,
+                        )
+
+                        stream: AsyncStream[
+                            ChatCompletionChunk
+                        ] = await runpopd_client.chat.completions.create(
+                            model=request.html_model,
+                            messages=messages,
+                            stream=True,
+                            temperature=request.temperature,
+                            top_p=request.top_p,
+                        )
+                    else:
+                        stream: AsyncStream[
+                            ChatCompletionChunk
+                        ] = await client.chat.completions.create(
+                            model=request.html_model,
+                            messages=messages,
+                            stream=True,
+                            temperature=request.temperature,
+                            top_p=request.top_p,
+                        )
+                else:
+                    stream: AsyncStream[
+                        ChatCompletionChunk
+                    ] = await client.chat.completions.create(
+                        # model="deepseek/deepseek-chat-v3-0324:Lambda",
+                        model=Config.CODE_GENERATION_MODEL,
+                        messages=messages,
+                        stream=True,
+                        temperature=request.temperature,
+                        top_p=request.top_p,
+                    )
 
                 async for chunk in stream:
                     # Extract content safely from the chunk, regardless of its structure
