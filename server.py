@@ -35,7 +35,7 @@ logger = logging.getLogger("weby_api")
 class Message(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    role: Literal["system", "user", "assistant"] = Field(
+    role: Literal["user", "assistant"] = Field(
         ..., description="The role of the message author"
     )
     content: str = Field(..., description="The content of the message")
