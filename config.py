@@ -16,7 +16,8 @@ class Config:
     MAX_CHAT_HISTORY_SIZE = 2
     TIMEOUT = 1200
     DEBUG = os.getenv("DEBUG", False)
-    CODE_GENERATION_MODEL = os.getenv("MODEL", "qwen/qwen3-235b-a22b:nitro")
+    # CODE_GENERATION_MODEL = os.getenv("MODEL", "qwen/qwen3-235b-a22b:nitro")
+    CODE_GENERATION_MODEL = os.getenv("MODEL", "deepseek/deepseek-chat-v3-0324:nitro")
     HTML_GENERATION_MODEL = "thudm/glm-4-9b:free"
     PROJECT_NAME_SYSTEM_PROMPT = "You are a helpful assistant that generates concise, memorable project names. Given a prompt describing a project, generate a short, catchy name that reflects the project's purpose. Return ONLY the project name without any additional text, explanations, or formatting."
     ENHANCER_SYSTEM_PROMPT = """You are an expert at enhancing website descriptions with vivid visual language. Your primary goal is to transform bland website descriptions into compelling visual narratives that help designers and developers create stunning interfaces.
