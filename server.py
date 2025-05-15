@@ -108,7 +108,7 @@ class ChatCompletionResponseChunk(BaseModel):
     data: Optional[ChatCompletionChunk] = Field(default=None)
     error: Optional[ErrorResponse] = Field(default=None)
 
-
+# TODO: Combine with /weby, many similar fields
 class PromptEnhanceRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -118,6 +118,10 @@ class PromptEnhanceRequest(BaseModel):
     )
     top_p: Optional[float] = Field(
         default=0.95, ge=0.0, le=1.0, description="Controls the nucleus sampling"
+    )
+    model: Optional[str] = Field(
+        default=Config.CODE_GENERATION_MODEL,
+        description="Model for prompt enhance",
     )
 
 
@@ -315,7 +319,7 @@ def sse_event(data: BaseModel) -> dict:
 
 
 @app.post(
-    "/prompt-enhance",
+    "/prompt_enhance",
     summary="Enhance a user prompt",
     description="Process a user message to enhance it for better response generation",
     response_model=PromptEnhanceResponse,
@@ -328,7 +332,7 @@ def sse_event(data: BaseModel) -> dict:
         500: {"model": ErrorResponse, "description": "Internal server error"},
     },
 )
-async def enhance_prompt(
+async def prompt_enhance(
     request: PromptEnhanceRequest,
     api_key: str = Depends(verify_api_key),
     client: AsyncOpenAI = Depends(get_client),
@@ -349,7 +353,7 @@ async def enhance_prompt(
 
         # Call the AI model to enhance the prompt
         completion = await client.chat.completions.create(
-            model=Config.CODE_GENERATION_MODEL,
+            model=request.model,
             messages=[
                 {"role": "system", "content": Config.ENHANCER_SYSTEM_PROMPT},
                 serialize_object(request.message),
@@ -526,11 +530,6 @@ async def weby(
                 messages[-1]["content"] = (
                     "Request: " + messages[-1]["content"] + project_context
                 )
-
-        # Disable reasoning
-        # WARNING: Remove later, refactor or something else...
-        if "qwen3" in request.model and not request.reasoning:
-            messages[-1]["content"] += "/no_think"
 
         async def stream_generator() -> AsyncGenerator[dict, None]:
             """Generator for streaming response."""
