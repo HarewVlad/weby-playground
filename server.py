@@ -478,18 +478,12 @@ async def weby(
                 detail="Overriding the default system prompt is not allowed",
             )
 
-        # WARNING: Remove later, refactor or something else...
-        no_think_instruction = ""
-        if "qwen3" in request.model and not request.reasoning:
-            no_think_instruction = "/no_think"
-
         # Prepare the appropriate system prompt based on framework
         if request.framework == "Nextjs":
             messages = [
                 {
                     "role": "system",
                     "content": Config.NEXTJS_SYSTEM_PROMPT
-                    + no_think_instruction
                     + "\n\n"
                     + Config.SHADCN_DOCUMENTATION,
                 }
@@ -498,14 +492,14 @@ async def weby(
             messages = [
                 {
                     "role": "system",
-                    "content": Config.HTML_SYSTEM_PROMPT + no_think_instruction,
+                    "content": Config.HTML_SYSTEM_PROMPT,
                 }
             ]
         else:  # Flutter
             messages = [
                 {
                     "role": "system",
-                    "content": Config.FLUTTER_SYSTEM_PROMPT + no_think_instruction,
+                    "content": Config.FLUTTER_SYSTEM_PROMPT,
                 }
             ]
 
@@ -532,6 +526,11 @@ async def weby(
                 messages[-1]["content"] = (
                     "Request: " + messages[-1]["content"] + project_context
                 )
+
+        # Disable reasoning
+        # WARNING: Remove later, refactor or something else...
+        if "qwen3" in request.model and not request.reasoning:
+            messages[-1]["content"] += "/no_think"
 
         async def stream_generator() -> AsyncGenerator[dict, None]:
             """Generator for streaming response."""
