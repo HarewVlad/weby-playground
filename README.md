@@ -24,3 +24,27 @@ cd website
 ```
 npm run dev
 ```
+
+
+### Take screenshot
+
+```bash
+# Custom format and quality
+curl -X POST http://localhost:3000/screenshot \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "http://localhost:3000",
+    "format": "jpeg",
+    "quality": 95,
+    "width": 1920,
+    "height": 1080
+  }' > screenshot.jpg
+
+# Screenshot of external URL
+curl -X POST http://localhost:3000/screenshot \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com",
+    "full_page": false
+  }' > external-screenshot.png
+```

@@ -10,11 +10,11 @@ class Config:
     GROQ_API_KEY = os.getenv("GROQ_API_KEY")
     WEBY_API = os.getenv("WEBY_URL")
     RUNPOD_API_KEY = os.getenv("RUNPOD_API_KEY")
-    RATE_LIMIT = os.getenv("RATE_LIMIT", 500)
+    RATE_LIMIT = os.getenv("RATE_LIMIT", 256)
     ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*")
     API_KEYS = os.getenv("API_KEYS", "")
     MAX_CHAT_HISTORY_SIZE = 2
-    TIMEOUT = 1200
+    TIMEOUT = int(os.getenv("TIMEOUT", 1200))
     DEBUG = os.getenv("DEBUG", False)
     # CODE_GENERATION_MODEL = os.getenv("MODEL", "qwen/qwen3-235b-a22b:nitro")
     CODE_GENERATION_MODEL = os.getenv("MODEL", "deepseek/deepseek-chat-v3-0324")
