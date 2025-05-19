@@ -352,6 +352,16 @@ async def prompt_enhance(
         )
 
         # Call the AI model to enhance the prompt
+        if "deepseek" in request.model:
+            extra_body = {
+                "provider": {
+                    "order": ["SambaNova"],
+                    "allow_fallbacks": False
+                }
+            }
+        else:
+            extra_body = {}
+
         completion = await client.chat.completions.create(
             model=request.model,
             messages=[
@@ -360,6 +370,7 @@ async def prompt_enhance(
             ],
             temperature=request.temperature,
             top_p=request.top_p,
+            extra_body=extra_body,
         )
 
         # Create enhanced message with same role but updated content
@@ -531,6 +542,16 @@ async def weby(
                     "Request: " + messages[-1]["content"] + project_context
                 )
 
+        if "deepseek" in request.model:
+            extra_body = {
+                "provider": {
+                    "order": ["SambaNova"],
+                    "allow_fallbacks": False
+                }
+            }
+        else:
+            extra_body = {}
+
         async def stream_generator() -> AsyncGenerator[dict, None]:
             """Generator for streaming response."""
             try:
@@ -561,6 +582,7 @@ async def weby(
                         stream=True,
                         temperature=request.temperature,
                         top_p=request.top_p,
+                        extra_body=extra_body,
                     )
 
                 # Stream chunks to the client
