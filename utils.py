@@ -124,9 +124,9 @@ def fix_lucide_imports_filtered(
     code_content: str, known_lucide_icons: list[str]
 ) -> str:
     """
-    Analyzes React code content to find used lucide-react icons and ensures
-    they are all correctly imported in the 'lucide-react' import statement,
-    filtering against a list of known Lucide icons.
+    Analyzes React code to find used lucide-react icons, checks they aren't
+    imported from other sources, and ensures they are correctly imported
+    from 'lucide-react'.
 
     Args:
         code_content: A string containing the React component code.
@@ -144,86 +144,142 @@ def fix_lucide_imports_filtered(
         return code_content
 
     # 1. Find all potential Component usages (capitalized JSX tags)
-    #    Includes self-closing tags <Component /> and opening tags <Component>
-    component_usage_pattern = re.compile(r"<([A-Z][A-Za-z0-9_]+)(?:\s|/>|>)")
-    potential_components = set(component_usage_pattern.findall(code_content))
+    component_usage_pattern = re.compile(r"<([A-Z][A-Za-z0-9_]*)(?:\s|/>|>)")
+    potential_components_in_jsx = set(component_usage_pattern.findall(code_content))
+    print(f"Potential components found in JSX: {potential_components_in_jsx}")
 
     # 2. Filter potential components to only include actual Lucide icons
     known_icons_set = set(known_lucide_icons)
-    # --- THIS IS THE SET OF ICONS ACTUALLY USED ---
-    used_lucide_icons = {
-        comp for comp in potential_components if comp in known_icons_set
+    used_potential_lucide_icons = {
+        comp for comp in potential_components_in_jsx if comp in known_icons_set
     }
-
-    print(f"Potential components found in JSX: {potential_components}")
     print(
-        f"Filtered Lucide icons found being used: {used_lucide_icons}"
-    )  # This is what should be imported
-
-    # 3. Find the existing lucide-react import statement
-    #    Improved regex to handle more whitespace variations and potential comments (basic)
-    import_pattern = re.compile(
-        r'^(import\s*\{([^}]*)\}\s*from\s*["\']lucide-react["\'];?)', re.MULTILINE
+        f"Potential Lucide icons found being used in JSX: {used_potential_lucide_icons}"
     )
-    match = import_pattern.search(code_content)
 
-    if not match:
-        print("Warning: No 'lucide-react' import line found.")
-        # If Lucide icons were detected but no import line exists, we could add one.
-        # For now, modifying existing imports only.
-        if used_lucide_icons:
+    # 3. Find *all* named imports to check for conflicts
+    all_imports_pattern = re.compile(
+        r'^import\s*\{([^}]*)\}\s*from\s*["\'](.*?)["\'];?', re.MULTILINE
+    )
+    # Dictionary to store {ComponentName: SourcePath} for non-lucide imports
+    other_imports_map: dict[str, str] = {}
+    # Set to store components explicitly imported from lucide-react
+    current_lucide_imports_set: set[str] = set()
+    lucide_import_match = None  # Store the match object for lucide-react import
+
+    for match in all_imports_pattern.finditer(code_content):
+        source_path = match.group(2)
+        imports_str = match.group(1).strip()
+        imports_str_cleaned = re.sub(
+            r"//.*?\n|/\*.*?\*/", "", imports_str, flags=re.DOTALL
+        )
+        imported_items = set(
+            i.strip() for i in imports_str_cleaned.split(",") if i.strip()
+        )
+
+        if source_path == "lucide-react":
+            current_lucide_imports_set = imported_items
+            lucide_import_match = match  # Found the specific lucide-react import line
             print(
-                f"Found usage of Lucide icons but no import line: {used_lucide_icons}"
+                f"Icons currently imported from lucide-react: {current_lucide_imports_set}"
             )
-        return code_content
+        else:
+            for item in imported_items:
+                if item in other_imports_map:
+                    # Handle potential duplicate imports of the same name from different non-lucide sources if necessary
+                    print(
+                        f"Warning: Component '{item}' imported from multiple non-lucide sources ('{other_imports_map[item]}' and '{source_path}')."
+                    )
+                other_imports_map[item] = source_path
 
-    original_import_statement = match.group(0)  # Capture the whole matched line
-    imports_str = match.group(2).strip() if match.group(2) else ""
-    # Trailing chars like semicolon are now part of group(0)
+    print(f"Components imported from other sources: {other_imports_map}")
 
-    # 4. Parse the currently imported icons from the matched string
-    #    Handle potential trailing commas and comments (basic removal)
-    imports_str_cleaned = re.sub(
-        r"//.*?\n|/\*.*?\*/", "", imports_str, flags=re.DOTALL
-    )  # Remove comments
-    current_imports = set(
-        i.strip()
-        for i in imports_str_cleaned.split(",")
-        if i.strip()  # Ensure non-empty strings after stripping
-    )
+    # If no lucide-react import line exists, behave as before (or decide to add one)
+    if lucide_import_match is None:
+        print("Warning: No 'lucide-react' import line found.")
+        if used_potential_lucide_icons:
+            # Check if any of the used icons conflict with other imports
+            conflicts = {
+                icon
+                for icon in used_potential_lucide_icons
+                if icon in other_imports_map
+            }
+            valid_to_add = used_potential_lucide_icons - conflicts
+            if valid_to_add:
+                print(
+                    f"Found usage of potential Lucide icons not imported elsewhere: {valid_to_add}. Consider adding an import line."
+                )
+            if conflicts:
+                print(
+                    f"Found usage of potential Lucide icons that conflict with other imports: {conflicts}"
+                )
+        return code_content  # Return original code if no lucide import exists
 
-    print(f"Icons currently imported: {current_imports}")
+    # 4. Determine the final set of icons that *should* be in the lucide-react import
+    #    Start with icons currently imported from lucide-react
+    final_lucide_imports_needed = set(current_lucide_imports_set)
 
-    # 5. Determine the final set of icons to import
-    #    *** Correction: The final set IS the set of used icons ***
-    #    Sort them alphabetically for consistency.
-    final_import_set_sorted = sorted(list(used_lucide_icons))
+    # Add used icons *only if* they are not imported from somewhere else
+    for icon in used_potential_lucide_icons:
+        if icon not in other_imports_map:
+            # If it's used, it's a known Lucide icon, and it's NOT in the other imports,
+            # it belongs in the lucide-react import.
+            final_lucide_imports_needed.add(icon)
+        # else: if icon is in other_imports_map, we intentionally skip adding it here.
+
+    # Remove icons from the final set if they are *no longer used* in JSX
+    # (Optional, but good for cleanup):
+    # final_lucide_imports_needed = {
+    #    icon for icon in final_lucide_imports_needed
+    #    if icon in used_potential_lucide_icons or icon in current_lucide_imports_set # Keep if used OR was already there explicitly
+    # }
+    # --- Simpler approach: Only add based on usage, ignore cleanup for now ---
+    # The logic above already achieves: keep current + add used if valid. Let's refine.
+
+    # --- Refined Logic for Step 4 ---
+    # The target set is:
+    # (Icons currently imported from lucide) UNION (Icons used in JSX AND are known Lucide icons AND NOT imported elsewhere)
+    # This ensures we don't remove icons that were manually added but aren't detected in JSX.
+    # Let's stick to the requirement: ensure USED icons are correctly imported.
+
+    # Determine REQUIRED icons based *only* on usage analysis, respecting conflicts
+    required_lucide_icons_based_on_usage = set()
+    conflicting_used_icons = set()
+    for icon in used_potential_lucide_icons:
+        if icon not in other_imports_map:
+            required_lucide_icons_based_on_usage.add(icon)
+        else:
+            conflicting_used_icons.add(icon)
+
+    if conflicting_used_icons:
+        print(
+            f"Note: The following components used in JSX are also valid Lucide icons but are imported from other sources: {conflicting_used_icons}. They will NOT be added to 'lucide-react'."
+        )
 
     print(
-        f"Final set of icons to import (based on usage): {set(final_import_set_sorted)}"
-    )  # Print as set for clarity
+        f"Required Lucide icons based on usage (excluding conflicts): {required_lucide_icons_based_on_usage}"
+    )
 
-    # 6. Check if changes are needed
-    #    Compare the content (as sets) of current imports vs required imports.
-    #    Also regenerate if the sorting changes, even if content is the same.
-    current_imports_sorted = sorted(list(current_imports))
+    # Sort for consistent comparison and output
+    final_import_set_sorted = sorted(list(required_lucide_icons_based_on_usage))
+    current_lucide_imports_sorted = sorted(list(current_lucide_imports_set))
 
-    if current_imports_sorted == final_import_set_sorted:
+    # 5. Check if changes are needed
+    if current_lucide_imports_sorted == final_import_set_sorted:
         print(
-            "No changes needed for lucide-react imports (already correct and sorted)."
+            "No changes needed for lucide-react imports (already correct and sorted based on usage)."
         )
         return code_content
-    # Handle case where no icons are used, should result in empty import {}
-    # This case is covered by the generation logic below if final_import_set_sorted is empty
 
-    # 7. Generate the new import statement
+    # 6. Generate the new import statement
+    original_import_statement = lucide_import_match.group(
+        0
+    )  # The full original line match
+
     if not final_import_set_sorted:
-        # If no known Lucide icons are used, import nothing.
-        new_import_line_content = "{ }"
+        new_import_line_content = "{ }"  # Import empty set if no icons needed
     else:
-        # Format with spaces and trailing comma for better linting/formatting compatibility
-        # Adjust formatting as preferred (e.g., multiline for many imports)
-        if len(final_import_set_sorted) > 4:  # Example threshold for multiline
+        if len(final_import_set_sorted) > 4:  # Threshold for multiline
             items_str = (
                 "\n"
                 + ",\n".join([f"  {icon}" for icon in final_import_set_sorted])
@@ -234,22 +290,26 @@ def fix_lucide_imports_filtered(
             new_import_list_str = ", ".join(final_import_set_sorted)
             new_import_line_content = f"{{ {new_import_list_str} }}"
 
-    # Check if original import line ended with a semicolon
     ends_with_semicolon = original_import_statement.rstrip().endswith(";")
     new_import_line = f'import {new_import_line_content} from "lucide-react"'
     if ends_with_semicolon:
         new_import_line += ";"
 
-    # Ensure we add a newline if the original line likely had one (simple check)
-    # This replacement might be slightly off if the original had complex whitespace,
-    # but usually replacing the whole line found by the MULTILINE regex is correct.
-    if "\n" in original_import_statement:
-        # Add newline if original likely had one, unless it's the last line
-        pass  # The replacement below handles the line break implicitly
+    # 7. Replace the old import line with the new one
+    #    Use re.sub with the original pattern anchored to the start of line
+    #    Need to escape the original matched string if using it directly in pattern
+    #    Safer: Use the lucide_import_match span to replace, or use the pattern
 
-    # 8. Replace the old import line with the new one
-    #    Use re.sub for safer replacement based on the pattern match
-    fixed_code = import_pattern.sub(new_import_line, code_content, count=1)
+    # Using the pattern for replacement is generally better
+    fixed_code = all_imports_pattern.sub(
+        lambda m: new_import_line if m.group(2) == "lucide-react" else m.group(0),
+        code_content,
+        count=0,  # Replace all occurrences (though should only be one lucide import)
+    )
+    # Refine replacement: Only replace the *first* match if multiple imports were found (unlikely)
+    # Using string replacement based on match span is safer if regex replacement complexifies
+    start, end = lucide_import_match.span()
+    fixed_code = code_content[:start] + new_import_line + code_content[end:]
 
     print("Updated lucide-react import line.")
     return fixed_code
