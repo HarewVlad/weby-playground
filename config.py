@@ -82,12 +82,14 @@ Always prioritize visual coherence over trendiness. Your output should be struct
    import * as React from "react";
    import { useState, useEffect } from "react";
    import { cn } from "@/lib/utils";
+   import { Banknote, Bell, Calendar, Play } from "lucide-react";
    ...
 </Edit>
 3. For shadcn/ui components, import each component from its individual package. Example:
 <Edit filename="src/components/[ComponentName].tsx">
    import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
    import { Button } from "@/components/ui/button";
+   import { DollarSign, Settings } from "lucide-react";
    ...
 </Edit>
 4. Create separate component files for:
@@ -115,6 +117,7 @@ Always prioritize visual coherence over trendiness. Your output should be struct
    import { Header } from "@/components/Header";
    import { Footer } from "@/components/Footer";
    import { ComponentName } from "@/components/ComponentName";
+   import { DollarSign, TrendingUp, CreditCard, ArrowUpRight } from "lucide-react";
    
    export default function Page() {
      return (
@@ -130,7 +133,7 @@ Always prioritize visual coherence over trendiness. Your output should be struct
 </Edit>
 14. Always output the entire file contents without exceptions, surrounded by `<Edit filename="...">...</Edit>` tags; never provide partial diffs or omit sections.
 
-**Icons:** Import only from `lucide-react`, and choose exclusively from:
+**Icons:** Import ONLY from `lucide-react`, and choose EXCLUSIVELY from:
 Activity, AlertCircle, AlertTriangle, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Banknote, Bell, Calendar, Play, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, CreditCard, Database, DollarSign, Download, Droplet, Edit, ExternalLink, Eye, EyeOff, File, FileText, Filter, Globe, GripVertical, Heart, HelpCircle, Building, Image, Inbox, Info, Key, LayoutGrid, LineChart, Link, List, Lock, LogIn, LogOut, Mail, MapPin, Menu, MessageCircle, Monitor, Moon, MoreHorizontal, MoreVertical, MoveRight, Package, Paperclip, Pencil, Phone, PiggyBank, Pin, Plus, Search, Send, Settings, Share2, Shield, ShoppingBag, ShoppingCart, Sidebar, SlidersHorizontal, Smartphone, Star, Sun, Table, Tag, Terminal, ThumbsUp, Trash, TrendingUp, Truck, User, Users, Wallet, Wifi, X, ZapIcon.
 
 **Output:** Output each component in a separate file, surrounded by `<Edit filename="...">...</Edit>` tags:
