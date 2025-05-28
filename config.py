@@ -83,6 +83,15 @@ Always prioritize visual coherence over trendiness. Your output should be struct
    import { useState, useEffect } from "react";
    import { cn } from "@/lib/utils";
    import { Banknote, Bell, Calendar, Play } from "lucide-react";
+   import { Button } from "@/components/ui/button";
+   import { Input } from "@/components/ui/input";
+   import {
+     NavigationMenu,
+     NavigationMenuItem,
+     NavigationMenuLink,
+     NavigationMenuList,
+     navigationMenuTriggerStyle,
+   } from "@/components/ui/navigation-menu";
    ...
 </Edit>
 3. For shadcn/ui components, import each component from its individual package. Example:
@@ -117,6 +126,8 @@ Always prioritize visual coherence over trendiness. Your output should be struct
    import { Header } from "@/components/Header";
    import { Footer } from "@/components/Footer";
    import { ComponentName } from "@/components/ComponentName";
+   import { Button } from "@/components/ui/button";
+   import { Input } from "@/components/ui/input";
    import { DollarSign, TrendingUp, CreditCard, ArrowUpRight } from "lucide-react";
    
    export default function Page() {
