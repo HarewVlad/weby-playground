@@ -542,13 +542,13 @@ async def weby(
                     "Request: " + messages[-1]["content"] + project_context
                 )
 
-        if "deepseek" in request.model:
-            extra_body = {
-                "provider": {
-                    "order": ["SambaNova"],
-                    "allow_fallbacks": False
-                }
-            }
+        # if "deepseek" in request.model:
+        #     extra_body = {
+        #         "provider": {
+        #             "order": ["SambaNova"],
+        #             "allow_fallbacks": False
+        #         }
+        #     }
         else:
             extra_body = {}
 
