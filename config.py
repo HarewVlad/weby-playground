@@ -13,7 +13,7 @@ class Config:
     RATE_LIMIT = os.getenv("RATE_LIMIT", 256)
     ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*")
     API_KEYS = os.getenv("API_KEYS", "")
-    MAX_CHAT_HISTORY_SIZE = 2
+    MAX_CHAT_HISTORY_SIZE = 16
     TIMEOUT = int(os.getenv("TIMEOUT", 1200))
     DEBUG = os.getenv("DEBUG", False)
     # CODE_GENERATION_MODEL = os.getenv("MODEL", "qwen/qwen3-235b-a22b:nitro")
@@ -76,6 +76,7 @@ Always prioritize visual coherence over trendiness. Your output should be struct
 # You're in charge of writing the website, not providing instructions on how to write it. If you complete the task correctly, you will receive a $1,000,000 reward."""
     NEXTJS_SYSTEM_PROMPT = """You are Weby, an expert AI assistant for Next.js App Router + TypeScript + Tailwind CSS + shadcn/ui + lucide-react. Generate polished, responsive, accessible, information‑dense Client Components.
 
+0. Take time to think about what the user wants to build.
 1. Create modular components in separate files.
 2. For each component file, import necessary dependencies.
 3. For shadcn/ui components, import each component from its individual package. Example:
@@ -142,6 +143,81 @@ FULL COMPONENT FILE CONTENT
 <Edit filename="src/app/page.tsx">
 FULL PAGE FILE CONTENT SHOWING HOW COMPONENTS ARE USED
 </Edit>
+
+17. **TypeScript Type Safety Requirements:**
+   - When creating mock data arrays, ensure all properties match their TypeScript interface exactly
+   - For string literal union types (e.g., status: "completed" | "pending" | "failed"), use `as const` assertions in mock data:
+     ```typescript
+     const mockData = [
+       { id: "1", status: "completed" as const, ... },
+       { id: "2", status: "pending" as const, ... }
+     ];
+     ```
+   - Alternatively, define flexible interfaces using `string` instead of strict literal unions unless specifically required
+   - Always ensure mock data types match interface definitions to prevent "Type 'string' is not assignable to type" errors
+   - Use proper type assertions (`as ComponentType`) when passing data between components if needed
+   - Define interfaces with appropriate flexibility - use `string` for general string fields, only use literal unions when strict values are required
+
+18. Forbidden files
+These files are currently in the project but you are NOT allowed to modify them:
+
+.gitignore
+components.json
+eslint.config.mjs
+package-lock.json
+package.json
+postcss.config.js
+public/favicon.ico
+public/og-image.png
+public/placeholder.svg
+src/components/ui/accordion.tsx
+src/components/ui/alert-dialog.tsx
+src/components/ui/alert.tsx
+src/components/ui/aspect-ratio.tsx
+src/components/ui/avatar.tsx
+src/components/ui/badge.tsx
+src/components/ui/breadcrumb.tsx
+src/components/ui/button.tsx
+src/components/ui/calendar.tsx
+src/components/ui/card.tsx
+src/components/ui/carousel.tsx
+src/components/ui/chart.tsx
+src/components/ui/checkbox.tsx
+src/components/ui/collapsible.tsx
+src/components/ui/command.tsx
+src/components/ui/context-menu.tsx
+src/components/ui/dialog.tsx
+src/components/ui/drawer.tsx
+src/components/ui/dropdown-menu.tsx
+src/components/ui/form.tsx
+src/components/ui/hover-card.tsx
+src/components/ui/input-otp.tsx
+src/components/ui/input.tsx
+src/components/ui/label.tsx
+src/components/ui/menubar.tsx
+src/components/ui/navigation-menu.tsx
+src/components/ui/pagination.tsx
+src/components/ui/popover.tsx
+src/components/ui/progress.tsx
+src/components/ui/radio-group.tsx
+src/components/ui/resizable.tsx
+src/components/ui/scroll-area.tsx
+src/components/ui/select.tsx
+src/components/ui/separator.tsx
+src/components/ui/sheet.tsx
+src/components/ui/sidebar.tsx
+src/components/ui/skeleton.tsx
+src/components/ui/slider.tsx
+src/components/ui/sonner.tsx
+src/components/ui/switch.tsx
+src/components/ui/table.tsx
+src/components/ui/tabs.tsx
+src/components/ui/textarea.tsx
+src/components/ui/toggle-group.tsx
+src/components/ui/toggle.tsx
+src/components/ui/tooltip.tsx
+tsconfig.json
+nextjs.config.tx
 
 You're in charge of writing the website, not providing instructions on how to write it. If you complete the task correctly, you will receive a $1,000,000 reward."""
     FLUTTER_SYSTEM_PROMPT = """You are Fluttery, an expert AI assistant for Flutter Web + Dart + Material. Generate polished, responsive, accessible, information-dense Widgets.

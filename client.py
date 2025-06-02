@@ -6,7 +6,7 @@ import requests
 from utils import get_project_structure_detailed
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
-project_path = os.path.join(script_dir, "website_nextjs/src/app")
+project_path = os.path.join(script_dir, "website_nextjs/")
 
 os.makedirs(project_path, exist_ok=True)
 print(f"[*] Project path set to: {project_path}")
@@ -14,14 +14,14 @@ print(f"[*] Project path set to: {project_path}")
 
 def apply_changes(response_content, base_project_path):
     """
-    Parses the response content for <edit filename="...">...</edit> and
-    <create filename="...">...</create> blocks, handling optional markdown
-    code fences (```) around the content, and applies the changes to the
-    specified files within the base_project_path.
+    Parses the response content for <Edit filename="...">...</Edit> blocks,
+    handling optional markdown code fences (```) around the content, and 
+    applies the changes to the specified files within the base_project_path.
     """
-    action_pattern = re.compile(
-        # Match <edit filename="..."> or <create filename="...">
-        r'<(Edit) filename="([^"]+)">\s*'
+    # Updated pattern to specifically handle <Edit> tags
+    edit_pattern = re.compile(
+        # Match <Edit filename="...">
+        r'<Edit\s+filename="([^"]+)"\s*>\s*'
         # Optional ```lang marker and newline
         r"(?:```[a-zA-Z]*\s*\n?)?"
         # Capture the content (non-greedy)
@@ -29,15 +29,16 @@ def apply_changes(response_content, base_project_path):
         # Optional newline and closing ``` marker
         r"(?:\n?\s*```)?"
         # Match the corresponding closing tag </Edit>
-        r"\s*</\1>",
+        r"\s*</Edit>",
         re.DOTALL | re.IGNORECASE,
     )
+    
     changed = False
     abs_project_path = os.path.abspath(base_project_path)
 
-    for match in action_pattern.finditer(response_content):
-        relative_filename = match.group(2).strip()
-        file_content = match.group(3).strip()
+    for match in edit_pattern.finditer(response_content):
+        relative_filename = match.group(1).strip()
+        file_content = match.group(2).strip()
 
         # Prevent path traversal issues
         target_path = os.path.join(abs_project_path, relative_filename)
@@ -58,6 +59,7 @@ def apply_changes(response_content, base_project_path):
                 f.write(file_content)
 
             print(f"\n[*] Applied edit to: {relative_filename}")
+            print(f"[*] File written to: {abs_target_path}")
 
             changed = True
         except OSError as e:
@@ -68,6 +70,16 @@ def apply_changes(response_content, base_project_path):
             )
 
     return changed
+
+
+def check_for_complete_edit_tags(content):
+    """
+    Check if the accumulated content contains complete <Edit>...</Edit> tags.
+    Returns True if there are complete tags that can be processed.
+    """
+    # Simple check for complete Edit tags
+    edit_pattern = re.compile(r'<Edit\s+filename="[^"]+"\s*>.*?</Edit>', re.DOTALL | re.IGNORECASE)
+    return bool(edit_pattern.search(content))
 
 
 def chat_loop():
@@ -103,6 +115,8 @@ def chat_loop():
                 "messages": chat_history,
                 # "files": files,  # Uncomment if you want to send files
                 "temperature": 0.6,
+                # "framework": "HTML",
+                "reasoning": False
             }
 
             with requests.post(
@@ -157,11 +171,20 @@ def chat_loop():
 
                 print()
 
-            # Post-processing
+            # Post-processing: Apply file changes after streaming is complete
             if full_response:
-                changed = apply_changes(full_response, project_path)
-                if changed:
-                    print("[*] File changes applied successfully.")
+                print("\n[*] Processing response for file changes...")
+                
+                # Check if there are any Edit tags to process
+                if check_for_complete_edit_tags(full_response):
+                    print("[*] Found Edit tags, applying changes...")
+                    changed = apply_changes(full_response, project_path)
+                    if changed:
+                        print("[*] File changes applied successfully.")
+                    else:
+                        print("[*] No valid file changes found.")
+                else:
+                    print("[*] No Edit tags found in response.")
 
                 chat_history.append({"role": "assistant", "content": full_response})
 
