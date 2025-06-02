@@ -86,6 +86,10 @@ class ChatCompletionRequest(BaseModel):
         default=True,
         description="Controls reasoning of the model"
     )
+    nextjs_system_prompt: Optional[str] = Field(
+        default=Config.NEXTJS_SYSTEM_PROMPT,
+        descripiton="Nexj.js system prompt"
+    )
 
     @validator("messages")
     def validate_messages(cls, v):
@@ -498,7 +502,7 @@ async def weby(
             messages = [
                 {
                     "role": "system",
-                    "content": Config.NEXTJS_SYSTEM_PROMPT
+                    "content": request.nextjs_system_prompt
                     + "\n\n"
                     + Config.SHADCN_DOCUMENTATION,
                 }
@@ -542,13 +546,13 @@ async def weby(
                     "Request: " + messages[-1]["content"] + project_context
                 )
 
-        if "deepseek" in request.model:
-            extra_body = {
-                "provider": {
-                    "order": ["SambaNova"],
-                    "allow_fallbacks": False
-                }
-            }
+        # if "deepseek" in request.model:
+        #     extra_body = {
+        #         "provider": {
+        #             "order": ["SambaNova"],
+        #             "allow_fallbacks": False
+        #         }
+        #     }
         else:
             extra_body = {}
 
@@ -601,7 +605,7 @@ async def weby(
                 )
                 yield sse_event(error_response)
 
-        logger.info(f"Starting SSE response stream")
+        logger.info("Starting SSE response stream")
         return EventSourceResponse(stream_generator())
 
     except Exception as e:
