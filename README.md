@@ -48,3 +48,25 @@ curl -X POST http://localhost:3000/screenshot \
     "full_page": false
   }' > external-screenshot.png
 ```
+
+## Server
+
+### Example non-stream request
+```bash
+curl -X POST "http://localhost:9999/v1/weby" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-api-key-here" \
+  -d '{
+    "messages": [
+      {
+        "role": "user", 
+        "content": "Hi, how are you?"
+      }
+    ],
+    "stream": false,
+    "framework": "Nextjs",
+    "temperature": 0.7,
+    "top_p": 0.95,
+    "model": "anthropic/claude-3.5-sonnet"
+  }'
+```
