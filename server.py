@@ -111,16 +111,6 @@ class ChatCompletionResponseChunk(BaseModel):
     error: Optional[ErrorResponse] = Field(default=None)
 
 
-# SSE Response model for documentation
-class SSEResponse(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    event: str = Field(default="message", description="SSE event type")
-    data: ChatCompletionResponseChunk = Field(
-        ..., description="The chunk data or error"
-    )
-
-
 # TODO: Combine with /weby, many similar fields
 class PromptEnhanceRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -479,7 +469,7 @@ async def generate_project_name(
     "/v1/weby",
     summary="Create a streaming chat completion",
     description="Create a streaming chat completion with the provided messages. Returns Server-Sent Events (SSE) stream.",
-    response_model=SSEResponse,
+    response_model=ChatCompletionResponseChunk,
     responses={
         200: {
             "description": "Server-Sent Events stream of chat completion chunks",
