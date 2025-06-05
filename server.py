@@ -86,11 +86,7 @@ class ChatCompletionRequest(BaseModel):
         default=True, description="Controls reasoning of the model"
     )
     nextjs_system_prompt: Optional[str] = Field(
-        default=Config.NEXTJS_SYSTEM_PROMPT, descripiton="Nexj.js system prompt"
-    )
-    stream: Optional[bool] = Field(
-        default=True,
-        description="Whether to stream the response or return it all at once",
+        default=Config.NEXTJS_SYSTEM_PROMPT, description="Nexj.js system prompt"
     )
 
     @validator("messages")
@@ -115,44 +111,14 @@ class ChatCompletionResponseChunk(BaseModel):
     error: Optional[ErrorResponse] = Field(default=None)
 
 
-# Non-streaming response models
-class ChatMessage(BaseModel):
+# SSE Response model for documentation
+class SSEResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    role: str = Field(..., description="The role of the message author")
-    content: str = Field(..., description="The content of the message")
-
-
-class ChatChoice(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    index: int = Field(..., description="The index of the choice")
-    message: ChatMessage = Field(..., description="The message content")
-    finish_reason: Optional[str] = Field(
-        None, description="The reason the model stopped generating"
+    event: str = Field(default="message", description="SSE event type")
+    data: ChatCompletionResponseChunk = Field(
+        ..., description="The chunk data or error"
     )
-
-
-class Usage(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    prompt_tokens: int = Field(..., description="Number of tokens in the prompt")
-    completion_tokens: int = Field(
-        ..., description="Number of tokens in the completion"
-    )
-    total_tokens: int = Field(..., description="Total number of tokens")
-
-
-class ChatCompletionResponse(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    id: str = Field(..., description="Unique identifier for the completion")
-    object: str = Field(default="chat.completion", description="Object type")
-    created: int = Field(..., description="Unix timestamp of creation")
-    model: str = Field(..., description="Model used for completion")
-    choices: List[ChatChoice] = Field(..., description="List of completion choices")
-    usage: Optional[Usage] = Field(None, description="Token usage information")
-    processing_time: float = Field(..., description="Time taken to process the request")
 
 
 # TODO: Combine with /weby, many similar fields
@@ -511,17 +477,19 @@ async def generate_project_name(
 
 @app.post(
     "/v1/weby",
-    summary="Create a chat completion (streaming or non-streaming)",
-    description="Create a chat completion with the provided messages. Supports both streaming and non-streaming responses.",
+    summary="Create a streaming chat completion",
+    description="Create a streaming chat completion with the provided messages. Returns Server-Sent Events (SSE) stream.",
+    response_model=SSEResponse,
     responses={
         200: {
-            "description": "Successful response",
+            "description": "Server-Sent Events stream of chat completion chunks",
             "content": {
-                "text/plain": {"description": "Streaming response (when stream=true)"},
-                "application/json": {
-                    "model": ChatCompletionResponse,
-                    "description": "Non-streaming response (when stream=false)",
-                },
+                "text/event-stream": {
+                    "schema": {
+                        "type": "string",
+                        "example": 'data: {"data": {"id": "...", "object": "chat.completion.chunk", ...}}\n\n',
+                    }
+                }
             },
         },
         400: {"model": ErrorResponse, "description": "Bad request"},
@@ -538,9 +506,7 @@ async def weby(
 ):
     start_time = time.time()
 
-    logger.info(
-        f"Processing weby request with framework={request.framework}, stream={request.stream}"
-    )
+    logger.info(f"Processing weby streaming request with framework={request.framework}")
 
     try:
         # Validate request
@@ -599,16 +565,6 @@ async def weby(
                     "Request: " + messages[-1]["content"] + project_context
                 )
 
-        # if "deepseek" in request.model:
-        #     extra_body = {
-        #         "provider": {
-        #             "order": ["SambaNova"],
-        #             "allow_fallbacks": False
-        #         }
-        #     }
-        else:
-            extra_body = {}
-
         # Determine which client to use
         use_runpod = (
             request.framework == "HTML" and request.model == "Tesslate/UIGEN-T2-7B"
@@ -619,91 +575,38 @@ async def weby(
             f"Using {'RunPod' if use_runpod else 'OpenRouter'} client with model {request.model}"
         )
 
-        if request.stream:
-            # Streaming response
-            async def stream_generator() -> AsyncGenerator[dict, None]:
-                """Generator for streaming response."""
-                try:
-                    stream: AsyncStream[
-                        ChatCompletionChunk
-                    ] = await selected_client.chat.completions.create(
-                        model=request.model,
-                        messages=messages,
-                        stream=True,
-                        temperature=request.temperature,
-                        top_p=request.top_p,
-                        extra_body=extra_body if not use_runpod else {},
-                    )
-
-                    # Stream chunks to the client
-                    async for chunk in stream:
-                        response_chunk = ChatCompletionResponseChunk(data=chunk)
-                        yield sse_event(response_chunk)
-
-                except Exception as e:
-                    logger.exception(f"Error during streaming: {str(e)}")
-                    error_response = ChatCompletionResponseChunk(
-                        error=ErrorResponse(
-                            details=str(e),
-                            status_code=500,
-                            timestamp=time.strftime("%Y-%m-%d %H:%M:%S"),
-                        )
-                    )
-                    yield sse_event(error_response)
-
-            logger.info("Starting SSE response stream")
-            return EventSourceResponse(stream_generator())
-
-        else:
-            # Non-streaming response
-            logger.info("Processing non-streaming request")
-
-            completion: ChatCompletion = await selected_client.chat.completions.create(
-                model=request.model,
-                messages=messages,
-                stream=False,
-                temperature=request.temperature,
-                top_p=request.top_p,
-                extra_body=extra_body if not use_runpod else {},
-            )
-
-            processing_time = time.time() - start_time
-
-            # Convert OpenAI response to our format
-            choices = []
-            for choice in completion.choices:
-                choices.append(
-                    ChatChoice(
-                        index=choice.index,
-                        message=ChatMessage(
-                            role=choice.message.role,
-                            content=choice.message.content or "",
-                        ),
-                        finish_reason=choice.finish_reason,
-                    )
+        # Streaming response
+        async def stream_generator() -> AsyncGenerator[dict, None]:
+            """Generator for streaming response."""
+            try:
+                stream: AsyncStream[
+                    ChatCompletionChunk
+                ] = await selected_client.chat.completions.create(
+                    model=request.model,
+                    messages=messages,
+                    stream=True,
+                    temperature=request.temperature,
+                    top_p=request.top_p,
                 )
 
-            # Handle usage information
-            usage = None
-            if completion.usage:
-                usage = Usage(
-                    prompt_tokens=completion.usage.prompt_tokens,
-                    completion_tokens=completion.usage.completion_tokens,
-                    total_tokens=completion.usage.total_tokens,
+                # Stream chunks to the client
+                async for chunk in stream:
+                    response_chunk = ChatCompletionResponseChunk(data=chunk)
+                    yield sse_event(response_chunk)
+
+            except Exception as e:
+                logger.exception(f"Error during streaming: {str(e)}")
+                error_response = ChatCompletionResponseChunk(
+                    error=ErrorResponse(
+                        details=str(e),
+                        status_code=500,
+                        timestamp=time.strftime("%Y-%m-%d %H:%M:%S"),
+                    )
                 )
+                yield sse_event(error_response)
 
-            response = ChatCompletionResponse(
-                id=completion.id,
-                object=completion.object,
-                created=completion.created,
-                model=completion.model,
-                choices=choices,
-                usage=usage,
-                processing_time=processing_time,
-            )
-
-            logger.info(f"Non-streaming request completed in {processing_time:.2f}s")
-            return response
+        logger.info("Starting SSE response stream")
+        return EventSourceResponse(stream_generator())
 
     except Exception as e:
         logger.exception(f"Error processing request: {str(e)}")
