@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import APIKeyHeader
 from openai import AsyncOpenAI, AsyncStream
-from openai.types.chat import ChatCompletionChunk
+from openai.types.chat import ChatCompletionChunk, ChatCompletion
 from pydantic import BaseModel, Field, validator, ConfigDict
 from sse_starlette.sse import EventSourceResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -83,12 +83,10 @@ class ChatCompletionRequest(BaseModel):
         description="Model for code generation",
     )
     reasoning: Optional[bool] = Field(
-        default=True,
-        description="Controls reasoning of the model"
+        default=True, description="Controls reasoning of the model"
     )
     nextjs_system_prompt: Optional[str] = Field(
-        default=Config.NEXTJS_SYSTEM_PROMPT,
-        descripiton="Nexj.js system prompt"
+        default=Config.NEXTJS_SYSTEM_PROMPT, description="Nexj.js system prompt"
     )
 
     @validator("messages")
@@ -111,6 +109,17 @@ class ChatCompletionResponseChunk(BaseModel):
 
     data: Optional[ChatCompletionChunk] = Field(default=None)
     error: Optional[ErrorResponse] = Field(default=None)
+
+
+# SSE Response model for documentation
+class SSEResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    event: str = Field(default="message", description="SSE event type")
+    data: ChatCompletionResponseChunk = Field(
+        ..., description="The chunk data or error"
+    )
+
 
 # TODO: Combine with /weby, many similar fields
 class PromptEnhanceRequest(BaseModel):
@@ -358,10 +367,7 @@ async def prompt_enhance(
         # Call the AI model to enhance the prompt
         if "deepseek" in request.model:
             extra_body = {
-                "provider": {
-                    "order": ["SambaNova"],
-                    "allow_fallbacks": False
-                }
+                "provider": {"order": ["SambaNova"], "allow_fallbacks": False}
             }
         else:
             extra_body = {}
@@ -472,9 +478,20 @@ async def generate_project_name(
 @app.post(
     "/v1/weby",
     summary="Create a streaming chat completion",
-    description="Create a streaming chat completion with the provided messages",
-    response_class=EventSourceResponse,
+    description="Create a streaming chat completion with the provided messages. Returns Server-Sent Events (SSE) stream.",
+    response_model=SSEResponse,
     responses={
+        200: {
+            "description": "Server-Sent Events stream of chat completion chunks",
+            "content": {
+                "text/event-stream": {
+                    "schema": {
+                        "type": "string",
+                        "example": 'data: {"data": {"id": "...", "object": "chat.completion.chunk", ...}}\n\n',
+                    }
+                }
+            },
+        },
         400: {"model": ErrorResponse, "description": "Bad request"},
         401: {"model": ErrorResponse, "description": "Unauthorized"},
         403: {"model": ErrorResponse, "description": "Forbidden"},
@@ -487,7 +504,9 @@ async def weby(
     api_key: str = Depends(verify_api_key),
     client: AsyncOpenAI = Depends(get_client),
 ):
-    logger.info(f"Processing weby request with framework={request.framework}")
+    start_time = time.time()
+
+    logger.info(f"Processing weby streaming request with framework={request.framework}")
 
     try:
         # Validate request
@@ -546,48 +565,29 @@ async def weby(
                     "Request: " + messages[-1]["content"] + project_context
                 )
 
-        # if "deepseek" in request.model:
-        #     extra_body = {
-        #         "provider": {
-        #             "order": ["SambaNova"],
-        #             "allow_fallbacks": False
-        #         }
-        #     }
-        else:
-            extra_body = {}
+        # Determine which client to use
+        use_runpod = (
+            request.framework == "HTML" and request.model == "Tesslate/UIGEN-T2-7B"
+        )
 
+        selected_client = get_runpod_client() if use_runpod else client
+        logger.info(
+            f"Using {'RunPod' if use_runpod else 'OpenRouter'} client with model {request.model}"
+        )
+
+        # Streaming response
         async def stream_generator() -> AsyncGenerator[dict, None]:
             """Generator for streaming response."""
             try:
-                # Select the appropriate client and model
-                if (
-                    request.framework == "HTML"
-                    and request.model == "Tesslate/UIGEN-T2-7B"
-                ):
-                    runpod_client = get_runpod_client()
-
-                    logger.info(f"Using RunPod client with model {request.model}")
-                    stream: AsyncStream[
-                        ChatCompletionChunk
-                    ] = await runpod_client.chat.completions.create(
-                        model=request.model,
-                        messages=messages,
-                        stream=True,
-                        temperature=request.temperature,
-                        top_p=request.top_p,
-                    )
-                else:
-                    logger.info(f"Using OpenRouter client with model {request.model}")
-                    stream: AsyncStream[
-                        ChatCompletionChunk
-                    ] = await client.chat.completions.create(
-                        model=request.model,
-                        messages=messages,
-                        stream=True,
-                        temperature=request.temperature,
-                        top_p=request.top_p,
-                        extra_body=extra_body,
-                    )
+                stream: AsyncStream[
+                    ChatCompletionChunk
+                ] = await selected_client.chat.completions.create(
+                    model=request.model,
+                    messages=messages,
+                    stream=True,
+                    temperature=request.temperature,
+                    top_p=request.top_p,
+                )
 
                 # Stream chunks to the client
                 async for chunk in stream:
@@ -609,7 +609,7 @@ async def weby(
         return EventSourceResponse(stream_generator())
 
     except Exception as e:
-        logger.exception(f"Error setting up streaming response: {str(e)}")
+        logger.exception(f"Error processing request: {str(e)}")
 
         if isinstance(e, HTTPException):
             raise e
