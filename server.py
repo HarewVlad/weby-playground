@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import APIKeyHeader
 from openai import AsyncOpenAI, AsyncStream
-from openai.types.chat import ChatCompletionChunk, ChatCompletion
+from openai.types.chat import ChatCompletionChunk
 from pydantic import BaseModel, Field, validator, ConfigDict
 from sse_starlette.sse import EventSourceResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -354,14 +354,6 @@ async def prompt_enhance(
             f"Enhancing prompt with temperature={request.temperature}, top_p={request.top_p}"
         )
 
-        # Call the AI model to enhance the prompt
-        if "deepseek" in request.model:
-            extra_body = {
-                "provider": {"order": ["SambaNova"], "allow_fallbacks": False}
-            }
-        else:
-            extra_body = {}
-
         completion = await client.chat.completions.create(
             model=request.model,
             messages=[
@@ -370,7 +362,6 @@ async def prompt_enhance(
             ],
             temperature=request.temperature,
             top_p=request.top_p,
-            extra_body=extra_body,
         )
 
         # Create enhanced message with same role but updated content
@@ -494,8 +485,6 @@ async def weby(
     api_key: str = Depends(verify_api_key),
     client: AsyncOpenAI = Depends(get_client),
 ):
-    start_time = time.time()
-
     logger.info(f"Processing weby streaming request with framework={request.framework}")
 
     try:
