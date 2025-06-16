@@ -191,27 +191,27 @@ Before writing the code for page.tsx, mentally review the list of files you gene
 Your page.tsx MUST correctly import and render the necessary components from the paths defined in your plan.
 Pay special attention to Context Providers. If any component in the tree uses <Calendar />, the root layout of this page MUST be wrapped in <DayPickerProvider initialProps={{}}>.
 For example, if you previously generated src/components/header.tsx and src/components/dashboard/StatCard.tsx, your page.tsx should look something like this:
-```tsx
+<Edit filename="src/app/page.tsx">
 // "use client"; // If needed
 import { Header } from "@/components/header";
- import { StatCard } from "@/components/dashboard/StatCard";
- // Other necessary components
+import { StatCard } from "@/components/dashboard/StatCard";
+// Other necessary components
 
- export default function HomePage() {
-   return (
-     <main>
-       <Header />
-       <div className="container mx-auto py-8">
-         <h1 className="text-3xl font-bold">Dashboard</h1>
-         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mt-6">
-           <StatCard title="Revenue" value="$45,231.89" />
-           {/* ... more components */}
-         </div>
-       </div>
-     </main>
-   );
- }
- ```
+export default function HomePage() {
+  return (
+    <main>
+      <Header />
+      <div className="container mx-auto py-8">
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mt-6">
+          <StatCard title="Revenue" value="$45,231.89" />
+          {/* ... more components */}
+        </div>
+      </div>
+    </main>
+  );
+}
+</Edit>
    *   **Accuracy in this final step is the most important part of your task.** A failure to correctly assemble the page will fail the entire generation.
 
 **Final Instruction:**
