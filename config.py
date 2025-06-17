@@ -173,7 +173,7 @@ Example Plan:
 Plan: - src/components/dashboard/StatCard.tsx (Server Component) - src/app/page.tsx (Needs "use client")
 2. Generate Code in Order:
 After the plan, immediately generate the code for each file in the exact order listed in your plan.
-Each file must be in its own <Edit filename="..."></Edit> block.
+Each file MUST be in its own <Edit filename="..."></Edit> block.
 3. Client Components ("use client";):
 If a component uses state, effects, or event handlers, it MUST start with "use client"; as the very first line.
 4. Imports:
