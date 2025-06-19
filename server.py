@@ -501,8 +501,8 @@ async def weby(
                 {
                     "role": "system",
                     "content": request.nextjs_system_prompt
-                    + "\n\n"
-                    + Config.SHADCN_DOCUMENTATION,
+                    # + "\n\n"
+                    # + Config.SHADCN_DOCUMENTATION,
                 }
             ]
         elif request.framework == "HTML":
