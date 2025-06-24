@@ -500,7 +500,7 @@ async def weby(
             messages = [
                 {
                     "role": "system",
-                    "content": request.nextjs_system_prompt
+                    "content": request.nextjs_system_prompt,
                     # + "\n\n"
                     # + Config.SHADCN_DOCUMENTATION,
                 }
@@ -566,6 +566,9 @@ async def weby(
                     stream=True,
                     temperature=request.temperature,
                     top_p=request.top_p,
+                    extra_body={
+                        "provider": {"order": ["Baseten"], "allow_fallbacks": False}
+                    },
                 )
 
                 # Stream chunks to the client
