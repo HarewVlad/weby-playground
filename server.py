@@ -567,7 +567,7 @@ async def weby(
                     temperature=request.temperature,
                     top_p=request.top_p,
                     extra_body={
-                        "provider": {"order": ["baseten/fp8"], "allow_fallbacks": False}
+                        "provider": {"order": ["deepinfra/fp4"], "allow_fallbacks": False}
                     },
                 )
 
