@@ -47,17 +47,38 @@ class Message(BaseModel):
         return v
 
 
-class FileItem(BaseModel):
+class BaseFileItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    file_path: str = Field(..., description="Path to the file")
     content: str = Field(..., description="Content of the file")
 
+    @validator("content")
+    def validate_content(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Content cannot be empty")
+        return v
+
+
+class ProjectFileItem(BaseFileItem):
+    file_path: str = Field(
+        ..., description="Relative path to the file within the project"
+    )
+
     @validator("file_path")
-    def validate_file_path(cls, v):
+    def validate_file_path(cls, v: str) -> str:
         if not v.strip():
             raise ValueError("File path cannot be empty")
-        return v
+        return v.strip()
+
+
+class UploadedFileItem(BaseFileItem):
+    file_name: str = Field(..., description="Original name of the uploaded file")
+
+    @validator("file_name")
+    def validate_file_name(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("File name cannot be empty")
+        return v.strip()
 
 
 class ChatCompletionRequest(BaseModel):
@@ -66,8 +87,11 @@ class ChatCompletionRequest(BaseModel):
     messages: List[Message] = Field(
         ..., description="A list of messages comprising the conversation so far"
     )
-    files: Optional[List[FileItem]] = Field(
-        default=[], description="A list of files with their paths and contents"
+    project_files: Optional[List[ProjectFileItem]] = Field(
+        default=[], description="A list of project files with their paths and contents"
+    )
+    uploaded_files: Optional[List[UploadedFileItem]] = Field(
+        default=[], description="A list of files with their names and contents"
     )
     temperature: Optional[float] = Field(
         default=0.6, ge=0.0, le=1.0, description="Controls randomness in the response"
@@ -75,15 +99,15 @@ class ChatCompletionRequest(BaseModel):
     top_p: Optional[float] = Field(
         default=0.95, ge=0.0, le=1.0, description="Controls the nucleus sampling"
     )
+    max_tokens: Optional[int] = Field(
+        default=16384, description="Maximum tokens in response"
+    )
     framework: Optional[Literal["Nextjs", "Flutter", "HTML"]] = Field(
         default="Nextjs", description="The framework to use for code generation"
     )
     model: Optional[str] = Field(
         default=Config.CODE_GENERATION_MODEL,
         description="Model for code generation",
-    )
-    reasoning: Optional[bool] = Field(
-        default=True, description="Controls reasoning of the model"
     )
     nextjs_system_prompt: Optional[str] = Field(
         default=Config.NEXTJS_SYSTEM_PROMPT, description="Nexj.js system prompt"
@@ -392,6 +416,155 @@ async def prompt_enhance(
 
 
 @app.post(
+    "/v1/chatty",
+    summary="Create a streaming chat completion with file support",
+    description="Create a streaming chat completion with the provided messages and optional file context. Returns Server-Sent Events (SSE) stream.",
+    response_model=ChatCompletionResponseChunk,
+    responses={
+        200: {
+            "description": "Server-Sent Events stream of chat completion chunks",
+            "content": {
+                "text/event-stream": {
+                    "schema": {
+                        "type": "string",
+                        "example": 'data: {"data": {"id": "...", "object": "chat.completion.chunk", ...}}\n\n',
+                    }
+                }
+            },
+        },
+        400: {"model": ErrorResponse, "description": "Bad request"},
+        401: {"model": ErrorResponse, "description": "Unauthorized"},
+        403: {"model": ErrorResponse, "description": "Forbidden"},
+        429: {"model": ErrorResponse, "description": "Rate limit exceeded"},
+        500: {"model": ErrorResponse, "description": "Internal server error"},
+    },
+)
+async def chatty(
+    request: ChatCompletionRequest,
+    api_key: str = Depends(verify_api_key),
+    client: AsyncOpenAI = Depends(get_client),
+):
+    logger.info(
+        f"Processing chat completion request with {len(request.messages)} messages"
+    )
+
+    try:
+        if request.project_files:
+            logger.info(f"Request includes {len(request.project_files)} project files")
+
+            project_files_context = []
+            for file in request.project_files:
+                file_context = f"""
+Project file: {file.file_path}
+```
+{file.content}
+```
+"""
+                project_files_context.append(file_context)
+
+            project_files_context = "\n".join(project_files_context)
+        else:
+            project_files_context = ""
+
+        messages = [
+            {
+                "role": "system",
+                "content": Config.CHAT_SYSTEM_PROMPT + project_files_context,
+            }
+        ]
+
+        # Add conversation messages
+        conversation_messages = [
+            serialize_object(msg)
+            for msg in request.messages[-Config.MAX_CHAT_HISTORY_SIZE :]
+        ]
+
+        # Process files if provided
+        if request.uploaded_files:
+            logger.info(
+                f"Request includes {len(request.uploaded_files)} uploaded files"
+            )
+
+            uploaded_file_contexts = []
+            for file in request.uploaded_files:
+                file_context = f"""
+File: {file.file_path}
+```
+{file.content}
+```
+"""
+                uploaded_file_contexts.append(file_context)
+
+            files_context = "\n".join(uploaded_file_contexts)
+
+            # Add file context to the last user message or create a new context message
+            if conversation_messages and conversation_messages[-1]["role"] == "user":
+                # Append file context to the last user message
+                conversation_messages[-1]["content"] = (
+                    conversation_messages[-1]["content"]
+                    + f"\n\n## Provided Files:\n{files_context}"
+                )
+            else:
+                # Add a separate context message
+                conversation_messages.append(
+                    {"role": "user", "content": f"## Provided Files:\n{files_context}"}
+                )
+
+        messages.extend(conversation_messages)
+
+        # Streaming response
+        async def stream_generator() -> AsyncGenerator[dict, None]:
+            """Generator for streaming chat response."""
+            try:
+                stream: AsyncStream[
+                    ChatCompletionChunk
+                ] = await client.chat.completions.create(
+                    model=request.model,
+                    messages=messages,
+                    stream=True,
+                    temperature=request.temperature,
+                    top_p=request.top_p,
+                    max_tokens=request.max_tokens,
+                    extra_body={
+                        "provider": {
+                            "order": ["deepinfra/fp4"],
+                            "allow_fallbacks": False,
+                        }
+                    },
+                )
+
+                # Stream chunks to the client
+                async for chunk in stream:
+                    response_chunk = ChatCompletionResponseChunk(data=chunk)
+                    yield sse_event(response_chunk)
+
+            except Exception as e:
+                logger.exception(f"Error during chat streaming: {str(e)}")
+                error_response = ChatCompletionResponseChunk(
+                    error=ErrorResponse(
+                        details=str(e),
+                        status_code=500,
+                        timestamp=time.strftime("%Y-%m-%d %H:%M:%S"),
+                    )
+                )
+                yield sse_event(error_response)
+
+        logger.info("Starting chat SSE response stream")
+        return EventSourceResponse(stream_generator())
+
+    except Exception as e:
+        logger.exception(f"Error processing chat request: {str(e)}")
+
+        if isinstance(e, HTTPException):
+            raise e
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to process chat request: {str(e)}",
+        )
+
+
+@app.post(
     "/project_name",
     summary="Generate a project name",
     description="Generate a project name based on user input",
@@ -529,20 +702,20 @@ async def weby(
         )
 
         # Include file context if provided
-        if request.files:
-            logger.info(f"Request includes {len(request.files)} files")
-            project_structure = [
-                {"file_path": file.file_path, "content": file.content}
-                for file in request.files
-            ]
-            project_context = (
-                f"Additional files: {json.dumps(project_structure, indent=2)}\n\n"
-            )
+        # if request.project_files:
+        #     logger.info(f"Request includes {len(request.project_files)} files")
+        #     project_structure = [
+        #         {"file_path": file.file_path, "content": file.content}
+        #         for file in request.project_files
+        #     ]
+        #     project_context = (
+        #         f"Additional files: {json.dumps(project_structure, indent=2)}\n\n"
+        #     )
 
-            if messages[-1]["role"] == "user":
-                messages[-1]["content"] = (
-                    "Request: " + messages[-1]["content"] + project_context
-                )
+        #     if messages[-1]["role"] == "user":
+        #         messages[-1]["content"] = (
+        #             "Request: " + messages[-1]["content"] + project_context
+        #         )
 
         # Determine which client to use
         use_runpod = (
@@ -567,7 +740,10 @@ async def weby(
                     temperature=request.temperature,
                     top_p=request.top_p,
                     extra_body={
-                        "provider": {"order": ["deepinfra/fp4"], "allow_fallbacks": False}
+                        "provider": {
+                            "order": ["deepinfra/fp4"],
+                            "allow_fallbacks": False,
+                        }
                     },
                 )
 
