@@ -1,72 +1,28 @@
 # Weby
 
-## Install
-```
-pip install -r requirements.txt
-```
+## Environment Variables
 
-## Run
-```
-python main.py
-```
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `OPENAI_API_KEY` | ✅ | - | API key for OpenAI-compatible service |
+| `OPENAI_API_BASE` | ❌ | `https://openrouter.ai/api/v1` | Base URL for OpenAI-compatible API |
+| `WEBY_URL` | ❌ | - | Weby service URL |
+| `RATE_LIMIT` | ❌ | `256` | Rate limit per minute per IP |
+| `ALLOWED_ORIGINS` | ❌ | `*` | CORS allowed origins (comma-separated) |
+| `API_KEYS` | ❌ | `""` | Valid API keys for authentication (comma-separated) |
+| `TIMEOUT` | ❌ | `1200` | Request timeout in seconds |
+| `DEBUG` | ❌ | `False` | Enable debug mode |
+| `MODEL` | ❌ | `deepseek/deepseek-r1-0528` | Default AI model for code generation |
 
-## Website
+## Example .env
 
-### Install
-```
-npx shadcn@latest init (Call it "website")
-npx shadcn@latest add button
-...
-cd website
-```
-
-### Run
-```
-npm run dev
-```
-
-
-### Take screenshot
-
-```bash
-# Custom format and quality
-curl -X POST http://localhost:3000/screenshot \
-  -H "Content-Type: application/json" \
-  -d '{
-    "url": "http://localhost:3000",
-    "format": "jpeg",
-    "quality": 95,
-    "width": 1920,
-    "height": 1080
-  }' > screenshot.jpg
-
-# Screenshot of external URL
-curl -X POST http://localhost:3000/screenshot \
-  -H "Content-Type: application/json" \
-  -d '{
-    "url": "https://example.com",
-    "full_page": false
-  }' > external-screenshot.png
-```
-
-## Server
-
-### Example non-stream request
-```bash
-curl -X POST "http://localhost:9999/v1/weby" \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: your-api-key-here" \
-  -d '{
-    "messages": [
-      {
-        "role": "user", 
-        "content": "Hi, how are you?"
-      }
-    ],
-    "stream": false,
-    "framework": "Nextjs",
-    "temperature": 0.7,
-    "top_p": 0.95,
-    "model": "anthropic/claude-3.5-sonnet"
-  }'
+```env
+OPENAI_API_KEY=your-api-key-here
+OPENAI_API_BASE=https://openrouter.ai/api/v1
+MODEL=deepseek/deepseek-r1-0528
+API_KEYS=key1,key2,key3
+RATE_LIMIT=100
+ALLOWED_ORIGINS=https://yourapp.com,http://localhost:3000
+TIMEOUT=600
+DEBUG=False
 ```
