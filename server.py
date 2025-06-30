@@ -1,4 +1,3 @@
-import json
 import logging
 import time
 from functools import lru_cache
@@ -303,25 +302,14 @@ async def verify_api_key(api_key: str = Depends(api_key_header)):
 @lru_cache(maxsize=1)
 def get_openai_client():
     return AsyncOpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=Config.OPENROUTER_API_KEY,
+        base_url=Config.OPENAI_API_BASE,
+        api_key=Config.OPENAI_API_KEY,
         timeout=Config.TIMEOUT,
     )
 
 
 async def get_client():
     return get_openai_client()
-
-
-# Helper to get RunPod client
-@lru_cache(maxsize=1)
-def get_runpod_client():
-    return AsyncOpenAI(
-        api_key=Config.RUNPOD_API_KEY,
-        base_url="https://api.runpod.ai/v2/595y9yzfcgqczt/openai/v1",
-        timeout=Config.TIMEOUT,
-    )
-
 
 def serialize_object(obj: Any) -> dict:
     """Safely serialize objects to dictionaries."""
@@ -674,8 +662,6 @@ async def weby(
                 {
                     "role": "system",
                     "content": request.nextjs_system_prompt,
-                    # + "\n\n"
-                    # + Config.SHADCN_DOCUMENTATION,
                 }
             ]
         elif request.framework == "HTML":
@@ -717,23 +703,13 @@ async def weby(
         #             "Request: " + messages[-1]["content"] + project_context
         #         )
 
-        # Determine which client to use
-        use_runpod = (
-            request.framework == "HTML" and request.model == "Tesslate/UIGEN-T2-7B"
-        )
-
-        selected_client = get_runpod_client() if use_runpod else client
-        logger.info(
-            f"Using {'RunPod' if use_runpod else 'OpenRouter'} client with model {request.model}"
-        )
-
         # Streaming response
         async def stream_generator() -> AsyncGenerator[dict, None]:
             """Generator for streaming response."""
             try:
                 stream: AsyncStream[
                     ChatCompletionChunk
-                ] = await selected_client.chat.completions.create(
+                ] = await client.chat.completions.create(
                     model=request.model,
                     messages=messages,
                     stream=True,

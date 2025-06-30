@@ -6,10 +6,9 @@ load_dotenv()
 
 
 class Config:
-    OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+    OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", "https://openrouter.ai/api/v1")
     WEBY_API = os.getenv("WEBY_URL")
-    RUNPOD_API_KEY = os.getenv("RUNPOD_API_KEY")
     RATE_LIMIT = os.getenv("RATE_LIMIT", 256)
     ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*")
     API_KEYS = os.getenv("API_KEYS", "")
