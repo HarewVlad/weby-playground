@@ -116,7 +116,6 @@ def chat_loop():
                 # "files": files,  # Uncomment if you want to send files
                 "temperature": 0.6,
                 # "framework": "HTML",
-                "reasoning": False
             }
 
             with requests.post(
