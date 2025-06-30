@@ -6,7 +6,7 @@
 |----------|----------|---------|-------------|
 | `OPENAI_API_KEY` | ✅ | - | API key for OpenAI-compatible service |
 | `OPENAI_API_BASE` | ❌ | `https://openrouter.ai/api/v1` | Base URL for OpenAI-compatible API |
-| `WEBY_URL` | ❌ | - | Weby service URL |
+| `WEBY_URL` | ❌ | `http://127.0.0.1:9999` | Weby service URL (Required only for test client) |
 | `RATE_LIMIT` | ❌ | `256` | Rate limit per minute per IP |
 | `ALLOWED_ORIGINS` | ❌ | `*` | CORS allowed origins (comma-separated) |
 | `API_KEYS` | ❌ | `""` | Valid API keys for authentication (comma-separated) |
