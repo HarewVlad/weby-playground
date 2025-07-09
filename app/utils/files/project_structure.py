@@ -2,7 +2,7 @@ import os
 
 
 def get_project_structure_detailed(
-    project_path, exclude=None, max_file_size=1024 * 1024
+        project_path, exclude=None, max_file_size=1024 * 1024
 ):
     """
     Returns the structure of a project as a JSON-serializable list with file contents.
