@@ -34,16 +34,14 @@ app.include_router(project_router)
 app.include_router(health_router)
 
 if __name__ == "__main__":
-    # Print startup banner
     logger.info("=" * 50)
     logger.info("Starting Weby API Server")
     logger.info("Version: 1.0.0")
     logger.info(f"Environment: {'Production' if not Config.DEBUG else 'Development'}")
     logger.info("=" * 50)
 
-    # Start the server
     uvicorn.run(
-        "server:app",
+        app,
         host="0.0.0.0",
         port=8000,
         reload=Config.DEBUG,
