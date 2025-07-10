@@ -5,7 +5,7 @@ from openai import AsyncOpenAI
 
 from app.components.prompts.features.prompt_enhance import ENHANCER_SYSTEM_PROMPT
 from app.schemas.types import ErrorResponse, PromptEnhanceResponse, PromptEnhanceRequest, Message
-from app.utils.client.openai_client import get_client
+from app.utils.client.openai.openai_client import get_client
 from app.utils.client.serialize_object import serialize_object
 from app.utils.client.verify_api_key import verify_api_key
 from app.utils.logger import logger

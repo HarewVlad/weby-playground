@@ -1,10 +1,11 @@
-import xml.etree.ElementTree as ET
+from xml.etree import ElementTree
 from dataclasses import dataclass
 from typing import List, AsyncGenerator, Any
 
-from fastapi.responses import StreamingResponse
 from openai import AsyncOpenAI
+from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam
 from pydantic import BaseModel
+from sse_starlette import EventSourceResponse
 
 from app.components.prompts.studio.planning import PLAN
 from app.components.prompts.studio.studio import STUDIO
@@ -36,11 +37,11 @@ class Studio:
         self.client = client
 
     async def plan(self, prompt: str) -> Plan:
-        # Generate structured plan via planning prompt
         messages = [
-            {"role": "system", "content": PLAN},
-            {"role": "user", "content": prompt}
+            ChatCompletionSystemMessageParam(role="system", content=PLAN),
+            ChatCompletionUserMessageParam(role="user", content=prompt)
         ]
+
         response = await self.client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,
@@ -48,60 +49,61 @@ class Studio:
             top_p=1.0,
             max_tokens=1024,
         )
+
         content = response.choices[0].message.content
-        root = ET.fromstring(content)
+        root = ElementTree.fromstring(content)
+
         title = root.findtext('task_title', default='').strip()
         description = root.findtext('task_description', default='').strip()
         steps: List[Step] = []
         steps_node = root.find('steps')
+
         if steps_node:
             for node in steps_node.findall('step'):
                 steps.append(Step(
                     title=node.findtext('title', '').strip(),
                     description=node.findtext('description', '').strip()
                 ))
+
         return Plan(task_title=title, task_description=description, steps=steps)
 
-    async def execute(self, request: ChatCompletionRequest) -> StreamingResponse:
-        # Extract last user prompt text
+    async def execute(self, request: ChatCompletionRequest) -> EventSourceResponse:
+        # Extract prompt and generate plan
         prompt_text = request.messages[-1].content
-        # Generate plan
         plan = await self.plan(prompt_text)
 
-        async def stream_all_steps() -> AsyncGenerator[str, None]:
-            # Emit plan metadata as SSE
-            plan_event = SSEData(content={
-                "type": "plan",
-                "task_title": plan.task_title,
-                "task_description": plan.task_description,
-                "steps": [step.title for step in plan.steps]
-            })
-            event_dict = sse_event(plan_event)
-            yield event_dict['data'] + "\n\n"
+        async def stream_all_steps() -> AsyncGenerator[dict | str, None]:
+            # Plan event
+            plan_event = SSEData(
+                content={
+                    "type": "plan",
+                    "task_title": plan.task_title,
+                    "task_description": plan.task_description,
+                    "steps": [step.title for step in plan.steps]
+                },
+                tool_calls=None
+            )
+            yield sse_event(plan_event)
 
             # Execute each step
             for step in plan.steps:
-                async for sse_chunk in self.execute_step(plan, step):
-                    yield sse_chunk
+                async for evt in self.execute_step(plan, step):
+                    yield evt
 
-        from sse_starlette import EventSourceResponse
-        # Return SSE-formatted response
         return EventSourceResponse(stream_all_steps())
 
-    def execute_step(self, plan: Plan, step: Step) -> AsyncGenerator[str, None]:
-        # Build per-step system prompt
-        system_prompt = STUDIO + (
-            f"\nCurrent Task: {plan.task_title}\n"
-            f"Step: {step.title} - {step.description}"
+    def execute_step(self, plan: Plan, step: Step) -> AsyncGenerator[dict, None]:
+        system_prompt = (
+                STUDIO
+                + f"\nCurrent Task: {plan.task_title}\nStep: {step.title} - {step.description}"
         )
 
-        async def step_stream() -> AsyncGenerator[str, None]:
-            # Stream LLM responses and tool calls
+        async def step_stream() -> AsyncGenerator[dict, None]:
             stream = await self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": step.description}
+                    ChatCompletionSystemMessageParam(role="system", content=system_prompt),
+                    ChatCompletionUserMessageParam(role="user", content=step.description)
                 ],
                 stream=True,
                 temperature=0.7,
@@ -112,18 +114,15 @@ class Studio:
             )
             async for chunk in stream:
                 delta = chunk.choices[0].delta
-                # If tool_calls present, extract name and arguments
-                if hasattr(delta, 'tool_calls') and delta.tool_calls:
-                    calls = []
-                    for call in delta.tool_calls:
-                        calls.append({
-                            "name": call.function.name,
-                            "arguments": call.function.arguments
-                        })
+
+                if getattr(delta, 'tool_calls', None):
+                    calls = [{
+                        "name": call.function.name,
+                        "arguments": call.function.arguments
+                    } for call in delta.tool_calls]
                     data = SSEData(content=None, tool_calls=calls)
                 else:
                     data = SSEData(content=delta.content, tool_calls=None)
-                event_dict = sse_event(data)
-                yield event_dict['data'] + "\n\n"
+                yield sse_event(data)
 
         return step_stream()

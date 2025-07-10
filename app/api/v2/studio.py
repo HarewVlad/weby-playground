@@ -1,12 +1,10 @@
-from fastapi import APIRouter, Depends, Query, status
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends
 
 from openai import AsyncOpenAI
 
 from app.schemas.types import ChatCompletionRequest, ChatCompletionResponseChunk, ErrorResponse
 from app.services.studio.studio import Studio
-from app.utils.client.openai_client import get_client
-from app.utils.client.verify_api_key import verify_api_key
+from app.utils.client.openai.openai_client import get_client
 
 router = APIRouter(tags=["studio"])
 

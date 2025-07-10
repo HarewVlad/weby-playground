@@ -24,11 +24,10 @@ def chat_loop():
     while True:
         try:
             user_input = input("\nYou: ")
+            if user_input.lower() in ["exit", "quit"]:
+                print("\nExiting chat. Goodbye!")
+                break
         except EOFError:
-            print("\nExiting chat. Goodbye!")
-            break
-
-        if user_input.lower() in ["exit", "quit"]:
             print("\nExiting chat. Goodbye!")
             break
 
