@@ -6,6 +6,9 @@ from app.api.v1.health import router as health_router
 from app.api.v1.project_name import router as project_router
 from app.api.v1.prompt_enhance import router as prompt_router
 from app.api.v1.weby import router as weby_router
+
+from app.api.v2.studio import router as studio_router
+
 from app.components.config import Config
 from app.utils.app.exceptions import register_exception_handlers
 from app.utils.logger import logger
@@ -32,6 +35,7 @@ app.include_router(chatty_router)
 app.include_router(weby_router)
 app.include_router(project_router)
 app.include_router(health_router)
+app.include_router(studio_router)
 
 if __name__ == "__main__":
     logger.info("=" * 50)

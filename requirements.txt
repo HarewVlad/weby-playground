@@ -75,3 +75,4 @@ uvicorn==0.34.0
 yarl==1.18.3
 zipp==3.21.0
 sse-starlette==2.2.1
+dspy>=3.0.0b2
