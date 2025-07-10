@@ -1,9 +1,10 @@
 import time
-from typing import AsyncGenerator
+from typing import AsyncGenerator, List
 
 from fastapi import Depends, HTTPException, APIRouter
 from openai import AsyncOpenAI, AsyncStream
-from openai.types.chat import ChatCompletionChunk
+from openai.types.chat import ChatCompletionChunk, ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam, \
+    ChatCompletionMessageParam
 from sse_starlette import EventSourceResponse
 from starlette import status
 
@@ -11,7 +12,7 @@ from app.components.prompts.generation.flutter import FLUTTER_SYSTEM_PROMPT
 from app.components.prompts.generation.html import HTML_SYSTEM_PROMPT
 from app.schemas.types import ChatCompletionResponseChunk, ErrorResponse, ChatCompletionRequest
 from app.components.config import Config
-from app.utils.client.openai_client import get_client
+from app.utils.client.openai.openai_client import get_client
 from app.utils.client.serialize_object import serialize_object
 from app.utils.client.verify_api_key import verify_api_key
 from app.utils.logger import logger
@@ -23,7 +24,8 @@ router = APIRouter(tags=["weby"])
 @router.post(
     "/v1/weby",
     summary="Create a streaming chat completion",
-    description="Create a streaming chat completion with the provided messages. Returns Server-Sent Events (SSE) stream.",
+    description="Create a streaming chat completion with the provided messages. "
+                "Returns Server-Sent Events (SSE) stream.",
     response_model=ChatCompletionResponseChunk,
     responses={
         200: {
@@ -59,35 +61,26 @@ async def weby(
                 detail="Overriding the default system prompt is not allowed",
             )
 
-        # Prepare the appropriate system prompt based on framework
+        messages: List[ChatCompletionMessageParam] = [...]
+
+        # Prepare an appropriate system prompt based on the framework
         if request.framework == "Nextjs":
             messages = [
-                {
-                    "role": "system",
-                    "content": request.nextjs_system_prompt,
-                }
+                ChatCompletionSystemMessageParam(role="system", content=request.nextjs_system_prompt),
             ]
         elif request.framework == "HTML":
             messages = [
-                {
-                    "role": "system",
-                    "content": HTML_SYSTEM_PROMPT,
-                }
+                ChatCompletionSystemMessageParam(role="system", content=HTML_SYSTEM_PROMPT)
             ]
-        else:  # Flutter
+        else:
             messages = [
-                {
-                    "role": "system",
-                    "content": FLUTTER_SYSTEM_PROMPT,
-                }
+                ChatCompletionSystemMessageParam(role="system", content=FLUTTER_SYSTEM_PROMPT)
             ]
 
         # Add user messages, limiting to configured history size
         messages.extend(
-            [
-                serialize_object(msg)
-                for msg in request.messages[-Config.MAX_CHAT_HISTORY_SIZE:]
-            ]
+            ChatCompletionUserMessageParam(role="user", content=msg.content) for msg in
+            request.messages[-Config.MAX_CHAT_HISTORY_SIZE:]
         )
 
         # Include file context if provided

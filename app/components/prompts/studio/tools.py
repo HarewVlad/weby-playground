@@ -1,4 +1,8 @@
-TOOLS = [
+from typing import List
+
+from openai.types.chat import ChatCompletionToolParam
+
+TOOLS: List[ChatCompletionToolParam] = [
     {
         "type": "function",
         "function": {

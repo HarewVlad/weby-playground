@@ -3,14 +3,14 @@ from typing import AsyncGenerator
 
 from fastapi import status, Depends, HTTPException, APIRouter
 from openai import AsyncOpenAI, AsyncStream
-from openai.types.chat import ChatCompletionChunk
+from openai.types.chat import ChatCompletionChunk, ChatCompletionSystemMessageParam
 from sse_starlette import EventSourceResponse
 
 from app.components.config import Config
 from app.components.prompts.chat import CHAT_SYSTEM_PROMPT
 from app.schemas.types import ChatCompletionResponseChunk, ErrorResponse, ChatCompletionRequest
 from app.utils.logger import logger
-from app.utils.client.openai_client import get_client
+from app.utils.client.openai.openai_client import get_client
 from app.utils.client.serialize_object import serialize_object
 from app.utils.schemas.sse_event import sse_event
 from app.utils.client.verify_api_key import verify_api_key
@@ -71,10 +71,7 @@ Project file: {file.file_path}
             project_files_context = ""
 
         messages = [
-            {
-                "role": "system",
-                "content": CHAT_SYSTEM_PROMPT + project_files_context,
-            }
+            ChatCompletionSystemMessageParam(role="system", content=CHAT_SYSTEM_PROMPT + project_files_context)
         ]
 
         # Add conversation messages

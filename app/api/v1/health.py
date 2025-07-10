@@ -3,7 +3,7 @@ from typing import Dict, Union
 
 from fastapi import status, APIRouter
 
-from app.utils.client.openai_client import get_openai_client
+from app.utils.client.openai.openai_client import get_openai_client
 from app.utils.logger import logger
 
 router = APIRouter(tags=["health"])

@@ -7,7 +7,7 @@ from app.components.prompts.features.project_name import PROJECT_NAME_SYSTEM_PRO
 from app.schemas.types import ErrorResponse, ProjectNameResponse, \
     ProjectNameRequest
 from app.components.config import Config
-from app.utils.client.openai_client import get_client
+from app.utils.client.openai.openai_client import get_client
 from app.utils.client.verify_api_key import verify_api_key
 from app.utils.logger import logger
 
