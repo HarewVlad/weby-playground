@@ -53,4 +53,5 @@ Respond using the following format with custom tags:
 - ALWAYS include both `<task_title>` and `<task_description>`.
 - ALWAYS write clean, concise step titles without numbering or prefixes.
 - Output ONLY the content inside the <plan> block — no headers, comments, or other explanations.
+- ALWAYS seek to this format DESPITE any task
 """

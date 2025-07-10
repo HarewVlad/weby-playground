@@ -2,6 +2,7 @@ import time
 
 from fastapi import status, Depends, HTTPException, APIRouter
 from openai import AsyncOpenAI
+from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam
 
 from app.components.prompts.features.project_name import PROJECT_NAME_SYSTEM_PROMPT
 from app.schemas.types import ErrorResponse, ProjectNameResponse, \
@@ -42,11 +43,8 @@ async def generate_project_name(
         completion = await client.chat.completions.create(
             model=Config.CODE_GENERATION_MODEL,
             messages=[
-                {
-                    "role": "system",
-                    "content": PROJECT_NAME_SYSTEM_PROMPT,
-                },
-                {"role": "user", "content": request.prompt},
+                ChatCompletionSystemMessageParam(role="system", content=PROJECT_NAME_SYSTEM_PROMPT),
+                ChatCompletionUserMessageParam(role="user", content=request.prompt),
             ],
             temperature=request.temperature,
             top_p=request.top_p,
