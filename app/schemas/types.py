@@ -16,6 +16,7 @@ class Message(BaseModel):
         ..., description="The role of the message author"
     )
     content: str = Field(..., description="The content of the message")
+    text: Optional[str] = Field(None, description="The text of the message")
 
     @validator("content")
     def content_not_empty(cls, v):
@@ -89,6 +90,12 @@ class ChatCompletionRequest(BaseModel):
     nextjs_system_prompt: Optional[str] = Field(
         default=NEXTJS_SYSTEM_PROMPT, description="Nexj.js system prompt"
     )
+    stream: Optional[bool] = Field(
+        default=True,
+        description="Use streaming mode for code generation",
+    )
+    frequency_penalty: Optional[float] = Field(None)
+    presence_penalty: Optional[float] = Field(None)
 
     @validator("messages")
     def validate_messages(cls, v):

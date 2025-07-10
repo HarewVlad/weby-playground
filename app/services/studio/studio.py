@@ -51,7 +51,12 @@ class Studio:
         )
 
         content = response.choices[0].message.content
-        root = ElementTree.fromstring(content)
+
+        root: ElementTree
+        try:
+            root = ElementTree.fromstring(content)
+        except ElementTree.ParseError:
+            return Plan(task_title=content, task_description=content, steps=[Step(content, content)])
 
         title = root.findtext('task_title', default='').strip()
         description = root.findtext('task_description', default='').strip()
@@ -99,6 +104,9 @@ class Studio:
         )
 
         async def step_stream() -> AsyncGenerator[dict, None]:
+            """
+            Stream LLM responses and aggregate tool calls. Interrupt if a tool other than write_file or edit_file is invoked.
+            """
             stream = await self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
@@ -112,17 +120,59 @@ class Studio:
                 tools=TOOLS,
                 tool_choice="auto",
             )
-            async for chunk in stream:
-                delta = chunk.choices[0].delta
 
+            # Aggregate tool call arguments
+            ongoing_call: dict[str,str] | None = None
+
+            async for chunk in stream:
+                print("chunk", chunk.choices[0])
+                delta = chunk.choices[0].delta
+                finish = getattr(chunk.choices[0], 'finish_reason', None)
+
+                # Handle streaming tool_calls fragments
                 if getattr(delta, 'tool_calls', None):
-                    calls = [{
-                        "name": call.function.name,
-                        "arguments": call.function.arguments
-                    } for call in delta.tool_calls]
+                    for call in delta.tool_calls:
+                        if ongoing_call is None:
+                            ongoing_call = {"name": call.function.name or "", "arguments": ""}
+                        # accumulate arguments
+                        ongoing_call["arguments"] += call.function.arguments or ""
+                    continue
+
+                # Once function call completes
+                if finish == "tool_calls" and ongoing_call:
+                    print("ongoing_call", ongoing_call)
+                    try:
+                        import json
+                        parsed_args = json.loads(ongoing_call["arguments"])
+                    except Exception:
+                        parsed_args = {}
+
+                    calls = [{"name": ongoing_call["name"], "arguments": parsed_args}]
                     data = SSEData(content=None, tool_calls=calls)
-                else:
+
+                    print("return tools data:", data)
+                    yield sse_event(data)
+
+                    # Interrupt generation if tool not write_file/edit_file
+                    if ongoing_call["name"] not in ("write_file", "edit_file"):
+                        print("interrupt generation for name:", ongoing_call["name"])
+                        return
+                    ongoing_call = None
+                    continue
+
+                # Normal content chunk
+                if delta.content:
                     data = SSEData(content=delta.content, tool_calls=None)
-                yield sse_event(data)
+                    yield sse_event(data)
+
+            # End of stream, if any incomplete call remains, emit it
+            if ongoing_call:
+                try:
+                    import json
+                    parsed_args = json.loads(ongoing_call["arguments"])
+                except Exception:
+                    parsed_args = {}
+                calls = [{"name": ongoing_call["name"], "arguments": parsed_args}]
+                yield sse_event(SSEData(content=None, tool_calls=calls))
 
         return step_stream()
