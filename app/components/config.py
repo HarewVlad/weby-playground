@@ -6,7 +6,7 @@ load_dotenv()
 
 class Config:
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-    OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1/")#"https://openrouter.ai/api/v1")
+    OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", "https://openrouter.ai/api/v1")
     WEBY_API = os.getenv("WEBY_URL", "http://127.0.0.1:9999")
     RATE_LIMIT = int(os.getenv("RATE_LIMIT", 256))
     ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*")
