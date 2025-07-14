@@ -61,43 +61,81 @@ async def weby(
                 detail="Overriding the default system prompt is not allowed",
             )
 
-        messages: List[ChatCompletionMessageParam] = [...]
+        messages: List[ChatCompletionMessageParam] = []
+
+        # Include file context if provided
+        if request.project_files:
+            logger.info(f"Request includes {len(request.project_files)} project files")
+
+            project_files_context = []
+            for file in request.project_files:
+                file_context = f"""
+Project file: {file.file_path}
+```
+{file.content}
+```
+"""
+                project_files_context.append(file_context)
+
+            project_files_context = "\n".join(project_files_context)
+        else:
+            project_files_context = ""
 
         # Prepare an appropriate system prompt based on the framework
         if request.framework == "Nextjs":
             messages = [
-                ChatCompletionSystemMessageParam(role="system", content=request.nextjs_system_prompt),
+                ChatCompletionSystemMessageParam(
+                    role="system",
+                    content=request.nextjs_system_prompt + project_files_context
+                ),
             ]
         elif request.framework == "HTML":
             messages = [
-                ChatCompletionSystemMessageParam(role="system", content=HTML_SYSTEM_PROMPT)
+                ChatCompletionSystemMessageParam(
+                    role="system",
+                    content=HTML_SYSTEM_PROMPT + project_files_context
+                )
             ]
         else:
             messages = [
-                ChatCompletionSystemMessageParam(role="system", content=FLUTTER_SYSTEM_PROMPT)
+                ChatCompletionSystemMessageParam(
+                    role="system",
+                    content=FLUTTER_SYSTEM_PROMPT + project_files_context
+                )
             ]
 
         # Add user messages, limiting to configured history size
-        messages.extend(
-            ChatCompletionUserMessageParam(role="user", content=msg.content) for msg in
-            request.messages[-Config.MAX_CHAT_HISTORY_SIZE:]
-        )
+        user_messages = [
+            ChatCompletionUserMessageParam(role="user", content=msg.content) 
+            for msg in request.messages[-Config.MAX_CHAT_HISTORY_SIZE:]
+        ]
 
-        # Include file context if provided
-        # if request.project_files:
-        #     logger.info(f"Request includes {len(request.project_files)} files")
-        #     project_structure = [
-        #         {"file_path": file.file_path, "content": file.content}
-        #         for file in request.project_files
-        #     ]
-        #     project_context = (
-        #         f"Additional files: {json.dumps(project_structure, indent=2)}\n\n"
-        #     )
+        # Process uploaded files if provided
+        if request.uploaded_files:
+            logger.info(f"Request includes {len(request.uploaded_files)} uploaded files")
 
-        #     if messages[-1]["role"] == "user":
-        #         messages[-1]["content"] = (
-        #             "Request: " + messages[-1]["content"] + project_context
-        #         )
+            uploaded_files_context = []
+            for file in request.uploaded_files:
+                file_context = f"""
+Uploaded file: {file.file_name}
+```
+{file.content}
+```
+"""
+                uploaded_files_context.append(file_context)
+
+            uploaded_files_context = "\n".join(uploaded_files_context)
+
+            if user_messages and user_messages[-1]["role"] == "user":
+                user_messages[-1] = ChatCompletionUserMessageParam(
+                    role="user",
+                    content=user_messages[-1]["content"] + f"\n\n## Uploaded Files:\n{uploaded_files_context}"
+                )
+            else:
+                logger.warning("Uploaded files were not added. Last message is not from the user")
+
+        # Add all user messages
+        messages.extend(user_messages)
 
         # Streaming response
         async def stream_generator() -> AsyncGenerator[dict, None]:
