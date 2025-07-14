@@ -139,10 +139,10 @@ curl -X POST http://localhost:8000/v1/weby \
     "model": "deepseek/deepseek-r1-0528",
     "temperature": 0.7,
     "top_p": 1.0,
-    "framework": "NextJS",
+    "framework": "Nextjs",
     "uploaded_files": [
       {
-        "file_name": "sales_data.csv",
+        "filename": "sales_data.csv",
         "content": "product_name,category,quantity_sold,revenue,profit_margin,date\nLaptop Pro X1,Electronics,145,217500.00,0.25,2024-01-15\nSmartphone Z10,Electronics,523,261500.00,0.30,2024-01-15\nWireless Earbuds,Accessories,892,89200.00,0.45,2024-01-15\nTablet Ultra,Electronics,67,33500.00,0.22,2024-01-15\nUSB-C Hub,Accessories,234,7020.00,0.55,2024-01-15\nGaming Mouse,Peripherals,156,12480.00,0.40,2024-01-15\nMechanical Keyboard,Peripherals,89,8900.00,0.35,2024-01-15\n4K Webcam,Electronics,45,6750.00,0.28,2024-01-15"
       }
     ]
@@ -164,10 +164,10 @@ curl -X POST http://localhost:8000/v1/weby \
     "model": "deepseek/deepseek-r1-0528",
     "temperature": 0.7,
     "top_p": 1.0,
-    "framework": "NextJS",
+    "framework": "Nextjs",
     "project_files": [
       {
-        "file_path": "config/app_settings.xml",
+        "filename": "config/app_settings.xml",
         "content": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<configuration>\n  <application name=\"MyApp\" version=\"2.1.0\">\n    <settings>\n      <debug enabled=\"true\"/>\n      <logging level=\"INFO\" maxFileSize=\"10MB\"/>\n    </settings>\n  </application>\n  <database>\n    <primary>\n      <host>db-primary.example.com</host>\n      <port>5432</port>\n      <name>production_db</name>\n      <pool minConnections=\"5\" maxConnections=\"20\"/>\n      <ssl enabled=\"true\" mode=\"require\"/>\n    </primary>\n    <replica>\n      <host>db-replica.example.com</host>\n      <port>5432</port>\n      <name>production_db</name>\n      <pool minConnections=\"2\" maxConnections=\"10\"/>\n    </replica>\n  </database>\n  <cache>\n    <redis host=\"cache.example.com\" port=\"6379\">\n      <ttl default=\"3600\" max=\"86400\"/>\n    </redis>\n  </cache>\n</configuration>"
       }
     ]
@@ -189,18 +189,41 @@ curl -X POST http://localhost:8000/v1/weby \
     "model": "deepseek/deepseek-r1-0528",
     "temperature": 0.7,
     "top_p": 1.0,
-    "framework": "NextJS",
+    "framework": "Nextjs",
     "uploaded_files": [
       {
-        "file_name": "daily_transactions.csv",
+        "filename": "daily_transactions.csv",
         "content": "timestamp,transaction_id,amount,status\n2024-01-15 08:00:00,TXN001,150.00,completed\n2024-01-15 08:01:00,TXN002,89.99,completed\n2024-01-15 08:02:00,TXN003,1200.00,pending\n2024-01-15 08:03:00,TXN004,45.50,completed\n2024-01-15 08:04:00,TXN005,799.00,failed"
       }
     ],
     "project_files": [
       {
-        "file_path": "config/database.xml",
+        "filename": "config/database.xml",
         "content": "<?xml version=\"1.0\"?>\n<database_config>\n  <connection_pool max=\"50\" timeout=\"30\"/>\n  <performance>\n    <max_transactions_per_second>1000</max_transactions_per_second>\n    <query_timeout>5</query_timeout>\n  </performance>\n</database_config>"
       }
     ]
+  }'
+```
+
+```bash
+curl -X POST "http://localhost:8000/v1/weby" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY_HERE" \
+  -d '{
+    "framework": "Nextjs",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Create a landing page based on this wireframe image"
+      }
+    ],
+    "uploaded_files": [
+      {
+        "filename": "wireframe.png",
+        "content": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+      }
+    ],
+    "temperature": 0.7,
+    "top_p": 0.9
   }'
 ```

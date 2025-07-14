@@ -17,13 +17,12 @@ from starlette import status
 
 from app.components.prompts.generation.flutter import FLUTTER_SYSTEM_PROMPT
 from app.components.prompts.generation.html import HTML_SYSTEM_PROMPT
+from app.components.prompts.features.image_parsing import IMAGE_PARSING_SYSTEM_PROMPT
 from app.schemas.types import (
     ChatCompletionResponseChunk,
     ErrorResponse,
     ChatCompletionRequest,
-    ProjectFileItem,
-    UploadedFileItem,
-    BaseFileItem,
+    FileItem,
 )
 from app.components.config import Config
 from app.utils.client.openai.openai_client import get_client
@@ -32,6 +31,63 @@ from app.utils.logger import logger
 from app.utils.schemas.sse_event import sse_event
 
 router = APIRouter(tags=["weby"])
+
+
+def is_image_file(file_name: str) -> bool:
+    if not file_name or "." not in file_name:
+        return False
+
+    file_extension = file_name.lower().split(".")[-1]
+    return file_extension in ["jpg", "jpeg", "png"]
+
+
+async def describe_image(content: str, file_name: str, client: AsyncOpenAI) -> str:
+    try:
+        logger.debug(f"Generating description for image: {file_name}")
+
+        # Prepare the image for the API call, assuming content is in base64
+        image_data = content
+        if not content.startswith("data:image"):
+            # If it's raw base64, add the data URL prefix
+            file_extension = file_name.lower().split(".")[-1]
+            mime_type = f"image/{'jpeg' if file_extension in ['jpg', 'jpeg'] else file_extension}"
+            image_data = f"data:{mime_type};base64,{content}"
+
+        messages = [
+            ChatCompletionSystemMessageParam(
+                role="system", content=IMAGE_PARSING_SYSTEM_PROMPT
+            ),
+            ChatCompletionUserMessageParam(
+                role="user",
+                content=[
+                    {
+                        "type": "text",
+                        "text": f"Please describe this image from file '{file_name}' in detail. Focus on elements that might be relevant for web development or UI design.",
+                    },
+                    {"type": "image_url", "image_url": {"url": image_data}},
+                ],
+            ),
+        ]
+
+        response = await client.chat.completions.create(
+            model="google/gemma-3-27b-it",
+            messages=messages,
+            max_tokens=512,
+            temperature=0.3,
+            extra_body={
+                "provider": {
+                    "order": ["deepinfra/bf16"],
+                    "allow_fallbacks": False,
+                }
+            },
+        )
+
+        description = response.choices[0].message.content
+        return f"Image Description for {file_name}:\n{description}"
+
+    except Exception as e:
+        logger.error(f"Error generating description for image {file_name}: {str(e)}")
+        return f"Image: {file_name} (description unavailable: {str(e)})"
 
 
 def parse_csv_content(content: str, file_name: str) -> str:
@@ -148,39 +204,36 @@ def parse_xml_content(content: str, file_name: str) -> str:
             return f"Data from {file_name} (raw format):\n{content}"
 
 
-def process_file_content(file_name: str, content: str) -> str:
+async def process_file_content(
+    file_name: str, content: str, client: AsyncOpenAI
+) -> str:
+    if is_image_file(file_name):
+        logger.debug(f"Processing image file: {file_name}")
+        return await describe_image(content, file_name, client)
+
     # Determine file type by extension
     file_extension = file_name.lower().split(".")[-1] if "." in file_name else ""
 
     if file_extension == "csv":
         logger.debug(f"Using CSV parser for {file_name}")
         return parse_csv_content(content, file_name)
-
     elif file_extension == "xml":
         logger.debug(f"Using XML parser for {file_name}")
         return parse_xml_content(content, file_name)
-
     else:
         # For all other file types, return content as-is
         return f"File: {file_name}\n```\n{content}\n```"
 
 
-def process_files(files: List[BaseFileItem]) -> Optional[str]:
+async def process_files(files: List[FileItem], client: AsyncOpenAI) -> Optional[str]:
     if not files:
         return None
 
     processed_contents = []
     for file in files:
-        if isinstance(file, ProjectFileItem):
-            file_identifier = file.file_path
-            print("Project file")
-        elif isinstance(file, UploadedFileItem):
-            file_identifier = file.file_name
-            print("Uploaded file")
-        else:
-            continue
-
-        processed_content = process_file_content(file_identifier, file.content)
+        processed_content = await process_file_content(
+            file.filename, file.content, client
+        )
         processed_contents.append(f"\n{processed_content}")
 
     return "\n".join(processed_contents)
@@ -189,8 +242,7 @@ def process_files(files: List[BaseFileItem]) -> Optional[str]:
 @router.post(
     "/v1/weby",
     summary="Create a streaming chat completion",
-    description="Create a streaming chat completion with the provided messages. "
-    "Returns Server-Sent Events (SSE) stream.",
+    description="Create a streaming chat completion with the provided messages. Returns Server-Sent Events (SSE) stream.",
     response_model=ChatCompletionResponseChunk,
     responses={
         200: {
@@ -229,7 +281,14 @@ async def weby(
         messages: List[ChatCompletionMessageParam] = []
 
         # Process project files
-        project_files_context = process_files(request.project_files) or ""
+        if request.project_files:
+            project_files_context = (
+                "\nProject files:\n"
+                + await process_files(request.project_files, client)
+                or ""
+            )
+        else:
+            project_files_context = ""
 
         # Prepare an appropriate system prompt based on the framework
         if request.framework == "Nextjs":
@@ -245,12 +304,17 @@ async def weby(
                     role="system", content=HTML_SYSTEM_PROMPT + project_files_context
                 )
             ]
-        else:
+        elif request.framework == "Flutter":
             messages = [
                 ChatCompletionSystemMessageParam(
                     role="system", content=FLUTTER_SYSTEM_PROMPT + project_files_context
                 )
             ]
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Unsupported framework",
+            )
 
         # Add user messages, limiting to configured history size
         user_messages = [
@@ -258,9 +322,8 @@ async def weby(
             for msg in request.messages[-Config.MAX_CHAT_HISTORY_SIZE :]
         ]
 
-        # Process uploaded files and add to last user message
-        uploaded_files_context = process_files(request.uploaded_files)
-
+        # Process uploaded files (with async support for images) and add to last user message
+        uploaded_files_context = await process_files(request.uploaded_files, client)
         if uploaded_files_context:
             if user_messages and user_messages[-1]["role"] == "user":
                 user_messages[-1] = ChatCompletionUserMessageParam(
@@ -278,7 +341,6 @@ async def weby(
 
         # Streaming response
         async def stream_generator() -> AsyncGenerator[dict, None]:
-            """Generator for streaming response."""
             try:
                 stream: AsyncStream[
                     ChatCompletionChunk

@@ -25,10 +25,11 @@ class Message(BaseModel):
         return v
 
 
-class BaseFileItem(BaseModel):
+class FileItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     content: str = Field(..., description="Content of the file")
+    filename: str = Field(..., description="Original name of the uploaded file")
 
     @validator("content")
     def validate_content(cls, v: str) -> str:
@@ -36,24 +37,8 @@ class BaseFileItem(BaseModel):
             raise ValueError("Content cannot be empty")
         return v
 
-
-class ProjectFileItem(BaseFileItem):
-    file_path: str = Field(
-        ..., description="Relative path to the file within the project"
-    )
-
-    @validator("file_path")
-    def validate_file_path(cls, v: str) -> str:
-        if not v.strip():
-            raise ValueError("File path cannot be empty")
-        return v.strip()
-
-
-class UploadedFileItem(BaseFileItem):
-    file_name: str = Field(..., description="Original name of the uploaded file")
-
-    @validator("file_name")
-    def validate_file_name(cls, v: str) -> str:
+    @validator("filename")
+    def validate_filename(cls, v: str) -> str:
         if not v.strip():
             raise ValueError("File name cannot be empty")
         return v.strip()
@@ -65,11 +50,11 @@ class ChatCompletionRequest(BaseModel):
     messages: List[Message] = Field(
         ..., description="A list of messages comprising the conversation so far"
     )
-    project_files: Optional[List[ProjectFileItem]] = Field(
-        default=[], description="A list of project files with their paths and contents"
+    project_files: Optional[List[FileItem]] = Field(
+        default=[], description="A list of project files"
     )
-    uploaded_files: Optional[List[UploadedFileItem]] = Field(
-        default=[], description="A list of files with their names and contents"
+    uploaded_files: Optional[List[FileItem]] = Field(
+        default=[], description="A list of uploaded files"
     )
     temperature: Optional[float] = Field(
         default=0.6, ge=0.0, le=1.0, description="Controls randomness in the response"
