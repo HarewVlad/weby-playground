@@ -2,7 +2,7 @@ import csv
 import io
 import time
 import xml.etree.ElementTree as ET
-from typing import AsyncGenerator, List
+from typing import AsyncGenerator, List, Optional
 
 from fastapi import Depends, HTTPException, APIRouter
 from openai import AsyncOpenAI, AsyncStream
@@ -21,6 +21,9 @@ from app.schemas.types import (
     ChatCompletionResponseChunk,
     ErrorResponse,
     ChatCompletionRequest,
+    ProjectFileItem,
+    UploadedFileItem,
+    BaseFileItem,
 )
 from app.components.config import Config
 from app.utils.client.openai.openai_client import get_client
@@ -162,6 +165,27 @@ def process_file_content(file_name: str, content: str) -> str:
         return f"File: {file_name}\n```\n{content}\n```"
 
 
+def process_files(files: List[BaseFileItem]) -> Optional[str]:
+    if not files:
+        return None
+
+    processed_contents = []
+    for file in files:
+        if isinstance(file, ProjectFileItem):
+            file_identifier = file.file_path
+            print("Project file")
+        elif isinstance(file, UploadedFileItem):
+            file_identifier = file.file_name
+            print("Uploaded file")
+        else:
+            continue
+
+        processed_content = process_file_content(file_identifier, file.content)
+        processed_contents.append(f"\n{processed_content}")
+
+    return "\n".join(processed_contents)
+
+
 @router.post(
     "/v1/weby",
     summary="Create a streaming chat completion",
@@ -204,18 +228,8 @@ async def weby(
 
         messages: List[ChatCompletionMessageParam] = []
 
-        # Include file context if provided
-        if request.project_files:
-            logger.info(f"Request includes {len(request.project_files)} project files")
-
-            project_files_context = []
-            for file in request.project_files:
-                processed_content = process_file_content(file.file_path, file.content)
-                project_files_context.append(f"\n{processed_content}")
-
-            project_files_context = "\n".join(project_files_context)
-        else:
-            project_files_context = ""
+        # Process project files
+        project_files_context = process_files(request.project_files) or ""
 
         # Prepare an appropriate system prompt based on the framework
         if request.framework == "Nextjs":
@@ -244,19 +258,10 @@ async def weby(
             for msg in request.messages[-Config.MAX_CHAT_HISTORY_SIZE :]
         ]
 
-        # Process uploaded files if provided
-        if request.uploaded_files:
-            logger.info(
-                f"Request includes {len(request.uploaded_files)} uploaded files"
-            )
+        # Process uploaded files and add to last user message
+        uploaded_files_context = process_files(request.uploaded_files)
 
-            uploaded_files_context = []
-            for file in request.uploaded_files:
-                processed_content = process_file_content(file.file_name, file.content)
-                uploaded_files_context.append(f"\n{processed_content}")
-
-            uploaded_files_context = "\n".join(uploaded_files_context)
-
+        if uploaded_files_context:
             if user_messages and user_messages[-1]["role"] == "user":
                 user_messages[-1] = ChatCompletionUserMessageParam(
                     role="user",
