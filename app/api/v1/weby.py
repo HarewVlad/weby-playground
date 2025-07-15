@@ -72,7 +72,7 @@ async def describe_image(content: str, file_name: str, client: AsyncOpenAI) -> s
         response = await client.chat.completions.create(
             model="google/gemma-3-27b-it",
             messages=messages,
-            max_tokens=512,
+            max_tokens=1024,
             temperature=0.3,
             extra_body={
                 "provider": {
