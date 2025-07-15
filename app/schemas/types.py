@@ -1,5 +1,5 @@
 import time
-from typing import List, Optional, Literal
+from typing import List, Optional, Literal, Any
 
 from openai.types.chat import ChatCompletionChunk
 from pydantic import BaseModel, Field, validator, ConfigDict
@@ -59,6 +59,16 @@ class UploadedFileItem(BaseFileItem):
         return v.strip()
 
 
+class CodeCompletionRequest(BaseModel):
+    model: str
+    prompt: str
+    max_tokens: int = 256
+    temperature: float = 0.0
+    top_p: float = 1.0
+    stop: Optional[List[str]] = None
+    suffix: Optional[str] = None
+
+
 class ChatCompletionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -98,7 +108,7 @@ class ChatCompletionRequest(BaseModel):
     presence_penalty: Optional[float] = Field(None)
 
     @validator("messages")
-    def validate_messages(cls, v):
+    def validate_messages(self, v):
         if not v:
             raise ValueError("At least one message is required")
         return v
@@ -110,6 +120,11 @@ class ErrorResponse(BaseModel):
     details: str
     status_code: int = Field(default=500)
     timestamp: str = Field(default_factory=lambda: time.strftime("%Y-%m-%d %H:%M:%S"))
+
+
+class CodeCompletionResponseChunk(BaseModel):
+    data: Optional[Any] = None
+    error: Optional["ErrorResponse"] = None
 
 
 class ChatCompletionResponseChunk(BaseModel):

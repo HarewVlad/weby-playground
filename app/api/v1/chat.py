@@ -1,25 +1,24 @@
 import time
-from typing import AsyncGenerator
+from typing import AsyncGenerator, List
 
 from fastapi import status, Depends, HTTPException, APIRouter
 from openai import AsyncOpenAI, AsyncStream
-from openai.types.chat import ChatCompletionChunk, ChatCompletionSystemMessageParam
+from openai.types.chat import ChatCompletionChunk, ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam
 from sse_starlette import EventSourceResponse
 
 from app.components.config import Config
 from app.components.prompts.chat import CHAT_SYSTEM_PROMPT
 from app.schemas.types import ChatCompletionResponseChunk, ErrorResponse, ChatCompletionRequest
-from app.utils.logger import logger
 from app.utils.client.openai.openai_client import get_client
 from app.utils.client.serialize_object import serialize_object
+from app.utils.logger import logger
 from app.utils.schemas.sse_event import sse_event
-from app.utils.client.verify_api_key import verify_api_key
 
-router = APIRouter(tags=["chatty"])
+router = APIRouter(tags=["chat"])
 
 
 @router.post(
-    "/v1/chatty",
+    "/v1/chat",
     summary="Create a streaming chat completion with file support",
     description="Create a streaming chat completion with the provided messages and optional file context. Returns "
                 "Server-Sent Events (SSE) stream.",
@@ -45,7 +44,6 @@ router = APIRouter(tags=["chatty"])
 )
 async def chatty(
         request: ChatCompletionRequest,
-        api_key: str = Depends(verify_api_key),
         client: AsyncOpenAI = Depends(get_client),
 ):
     logger.info(
@@ -70,17 +68,15 @@ Project file: {file.file_path}
         else:
             project_files_context = ""
 
-        messages = [
+        messages: List[ChatCompletionSystemMessageParam | ChatCompletionUserMessageParam] = [
             ChatCompletionSystemMessageParam(role="system", content=CHAT_SYSTEM_PROMPT + project_files_context)
         ]
 
-        # Add conversation messages
-        conversation_messages = [
-            serialize_object(msg)
+        conversation_messages: List[ChatCompletionUserMessageParam] = [
+            ChatCompletionUserMessageParam(**serialize_object(msg))
             for msg in request.messages[-Config.MAX_CHAT_HISTORY_SIZE:]
         ]
 
-        # Process files if provided
         if request.uploaded_files:
             logger.info(
                 f"Request includes {len(request.uploaded_files)} uploaded files"
@@ -98,24 +94,19 @@ File: {file.file_path}
 
             files_context = "\n".join(uploaded_file_contexts)
 
-            # Add file context to the last user message or create a new context message
             if conversation_messages and conversation_messages[-1]["role"] == "user":
-                # Append file context to the last user message
                 conversation_messages[-1]["content"] = (
                         conversation_messages[-1]["content"]
                         + f"\n\n## Provided Files:\n{files_context}"
                 )
             else:
-                # Add a separate context message
                 conversation_messages.append(
                     {"role": "user", "content": f"## Provided Files:\n{files_context}"}
                 )
 
         messages.extend(conversation_messages)
 
-        # Streaming response
         async def stream_generator() -> AsyncGenerator[dict, None]:
-            """Generator for streaming chat response."""
             try:
                 stream: AsyncStream[
                     ChatCompletionChunk
@@ -134,16 +125,15 @@ File: {file.file_path}
                     },
                 )
 
-                # Stream chunks to the client
                 async for chunk in stream:
                     response_chunk = ChatCompletionResponseChunk(data=chunk)
                     yield sse_event(response_chunk)
 
-            except Exception as e:
+            except Exception as stream_ex:
                 logger.exception(f"Error during chat streaming: {str(e)}")
                 error_response = ChatCompletionResponseChunk(
                     error=ErrorResponse(
-                        details=str(e),
+                        details=str(stream_ex),
                         status_code=500,
                         timestamp=time.strftime("%Y-%m-%d %H:%M:%S"),
                     )
