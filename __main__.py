@@ -1,13 +1,13 @@
 import uvicorn
 from fastapi import FastAPI
 
-from app.api.v1.chatty import router as chatty_router
+from app.api.v1.chat import router as chat_router
 from app.api.v1.health import router as health_router
 from app.api.v1.project_name import router as project_router
 from app.api.v1.prompt_enhance import router as prompt_router
 from app.api.v1.weby import router as weby_router
 
-from app.api.v2.studio import router as studio_router
+from app.api.v1.studio import router as studio_router
 
 from app.components.config import Config
 from app.utils.app.exceptions import register_exception_handlers
@@ -31,7 +31,7 @@ init_middleware(app=app)
 register_exception_handlers(app)
 
 app.include_router(prompt_router)
-app.include_router(chatty_router)
+app.include_router(chat_router)
 app.include_router(weby_router)
 app.include_router(project_router)
 app.include_router(health_router)

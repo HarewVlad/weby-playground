@@ -25,18 +25,18 @@ Respond using the following format with custom tags:
 
   <steps>
     <step>
-      <title>Clarify task requirements</title>
+      <title>Observe project to understand the project setup</title>
       <description>Explain what questions or decisions need to be resolved before starting implementation.</description>
     </step>
 
     <step>
       <title>Create example.py</title>
-      <description>Describe where the file should go and what it should contain, referencing any relevant structure.</description>
+      <description>Create a new file</description>
     </step>
 
     <step>
-      <title>Create test_example.py</title>
-      <description>Explain what the test file should do, and where it belongs within the test structure.</description>
+      <title>Edit test_example.py</title>
+      <description>Edit existing file.</description>
     </step>
 
     <!-- Add more steps as required -->
