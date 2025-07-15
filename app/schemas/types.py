@@ -52,6 +52,7 @@ class CodeCompletionRequest(BaseModel):
     top_p: float = 1.0
     stop: Optional[List[str]] = None
     suffix: Optional[str] = None
+    stream: Optional[bool] = False
 
 
 class ChatCompletionRequest(BaseModel):
@@ -92,7 +93,7 @@ class ChatCompletionRequest(BaseModel):
     frequency_penalty: Optional[float] = Field(None)
     presence_penalty: Optional[float] = Field(None)
 
-    @validator("messages")
+    # @validator("messages")
     def validate_messages(self, v):
         if not v:
             raise ValueError("At least one message is required")

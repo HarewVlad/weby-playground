@@ -15,7 +15,7 @@ async def get_studio(client: AsyncOpenAI = Depends(get_client)) -> Studio:
 
 
 @router.post(
-    "/v2/studio",
+    "/v1/studio",
     summary="Create a Studio Mode chat completion",
     description="Pair-programming assistant using Studio class for planning and execution.",
     response_model=ChatCompletionResponseChunk,
