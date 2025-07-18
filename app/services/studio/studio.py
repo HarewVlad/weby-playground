@@ -1,6 +1,5 @@
 import json
 from typing import Any, Dict
-
 from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionSystemMessageParam
 from pydantic import BaseModel
