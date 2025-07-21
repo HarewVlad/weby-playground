@@ -17,16 +17,44 @@ router = APIRouter(tags=["code-completion"])
 @router.post(
     "/v1/completions",
     summary="Native Code Completion Endpoint (OpenAI-Compatible)",
-    description="Streams raw text completions (non-chat) for IDE-like code completion.",
+    description="Streams or returns raw text completions (non-chat) for IDE-like code completion.",
     response_model=CodeCompletionResponseChunk
 )
-async def native_code_completion(
-    request: CodeCompletionRequest,
-    client: AsyncOpenAI = Depends(get_client),
+async def code_completion(
+        request: CodeCompletionRequest,
+        client: AsyncOpenAI = Depends(get_client),
 ):
     try:
         logger.info("Received native code completion request")
 
+        if not request.stream:
+            try:
+                completion: Completion = await client.completions.create(
+                    model=request.model,
+                    prompt=request.prompt,
+                    stream=False,
+                    max_tokens=request.max_tokens,
+                    temperature=request.temperature,
+                    top_p=request.top_p,
+                    stop=request.stop,
+                    suffix=request.suffix,
+                )
+                return CodeCompletionResponseChunk(data=completion)
+
+            except Exception as non_stream_error:
+                logger.exception("Non-streaming completion error")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail={
+                        "error": ErrorResponse(
+                            details=str(non_stream_error),
+                            status_code=500,
+                            timestamp=time.strftime("%Y-%m-%d %H:%M:%S"),
+                        )
+                    },
+                )
+
+        # Streaming response via SSE
         async def stream_response() -> AsyncGenerator[dict, None]:
             try:
                 stream: AsyncStream[Completion] = await client.completions.create(
@@ -45,22 +73,23 @@ async def native_code_completion(
 
             except Exception as stream_error:
                 logger.exception("Streaming error")
-                yield sse_event(CodeCompletionResponseChunk(
-                    error=ErrorResponse(
-                        details=str(stream_error),
-                        status_code=500,
-                        timestamp=time.strftime("%Y-%m-%d %H:%M:%S"),
+                yield sse_event(
+                    CodeCompletionResponseChunk(
+                        error=ErrorResponse(
+                            details=str(stream_error),
+                            status_code=500,
+                            timestamp=time.strftime("%Y-%m-%d %H:%M:%S"),
+                        )
                     )
-                ))
+                )
 
         return EventSourceResponse(stream_response())
 
+    except HTTPException:
+        raise
+
     except Exception as e:
         logger.exception("Code completion failed")
-
-        if isinstance(e, HTTPException):
-            raise e
-
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Code completion error: {str(e)}"
