@@ -2,7 +2,7 @@ import time
 from typing import List, Optional, Literal, Any
 
 from openai.types.chat import ChatCompletionChunk
-from pydantic import BaseModel, Field, validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 from app.components.config import Config
 from app.components.prompts.generation.nextjs import NEXTJS_SYSTEM_PROMPT
@@ -18,7 +18,7 @@ class Message(BaseModel):
     content: str = Field(..., description="The content of the message")
     text: Optional[str] = Field(None, description="The text of the message")
 
-    @validator("content")
+    @field_validator("content")
     def content_not_empty(cls, v):
         if not v.strip():
             raise ValueError("Message content cannot be empty")
@@ -31,13 +31,13 @@ class FileItem(BaseModel):
     content: str = Field(..., description="Content of the file")
     filename: str = Field(..., description="Original name of the uploaded file")
 
-    @validator("content")
+    @field_validator("content")
     def validate_content(cls, v: str) -> str:
         if not v.strip():
             raise ValueError("Content cannot be empty")
         return v
 
-    @validator("filename")
+    @field_validator("filename")
     def validate_filename(cls, v: str) -> str:
         if not v.strip():
             raise ValueError("File name cannot be empty")
@@ -92,12 +92,6 @@ class ChatCompletionRequest(BaseModel):
     )
     frequency_penalty: Optional[float] = Field(None)
     presence_penalty: Optional[float] = Field(None)
-
-    # @validator("messages")
-    def validate_messages(self, v):
-        if not v:
-            raise ValueError("At least one message is required")
-        return v
 
 
 class ErrorResponse(BaseModel):
@@ -157,7 +151,7 @@ class ProjectNameRequest(BaseModel):
         default=0.95, ge=0.0, le=1.0, description="Controls the nucleus sampling"
     )
 
-    @validator("prompt")
+    @field_validator("prompt")
     def prompt_not_empty(cls, v):
         if not v.strip():
             raise ValueError("Prompt cannot be empty")
