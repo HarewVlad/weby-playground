@@ -16,7 +16,7 @@ router = APIRouter(tags=["code-completion"])
 
 @router.post(
     "/v1/completions",
-    summary="Native Code Completion Endpoint (OpenAI-Compatible)",
+    summary="Code Completion Endpoint (OpenAI-Compatible)",
     description="Streams or returns raw text completions (non-chat) for IDE-like code completion.",
     response_model=CodeCompletionResponseChunk
 )
@@ -25,7 +25,7 @@ async def code_completion(
         client: AsyncOpenAI = Depends(get_client),
 ):
     try:
-        logger.info("Received native code completion request")
+        logger.info("Received code completion request")
 
         if not request.stream:
             try:
