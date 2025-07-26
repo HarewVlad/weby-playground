@@ -20,7 +20,7 @@ router = APIRouter(tags=["prompt_enhance"])
     response_model=PromptEnhanceResponse,
     status_code=status.HTTP_200_OK,
     responses={
-        400: {"modeА ты пl": ErrorResponse, "description": "Bad request"},
+        400: {"model": ErrorResponse, "description": "Bad request"},
         401: {"model": ErrorResponse, "description": "Unauthorized"},
         403: {"model": ErrorResponse, "description": "Forbidden"},
         429: {"model": ErrorResponse, "description": "Rate limit exceeded"},
